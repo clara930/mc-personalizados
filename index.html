@@ -99,7 +99,7 @@ td{padding:10px;border-bottom:1px solid #eee}
 
 <div class="card">
 <h3>Buscar</h3>
-<input id="busca" placeholder="Buscar cliente, vendedor, produto..." oninput="buscarPedidos()">
+<input id="busca" placeholder="Buscar..." oninput="buscarPedidos()">
 </div>
 
 <div class="card">
@@ -136,7 +136,7 @@ td{padding:10px;border-bottom:1px solid #eee}
 <input id="valorPago" type="number" placeholder="Quanto pagou" style="display:none;">
 <input id="valorFalta" type="number" readonly placeholder="Falta" style="display:none;">
 
-<button onclick="adicionarPedido()">Adicionar</button>
+<button onclick="adicionarPedido()">Salvar Pedido</button>
 </div>
 
 <div class="card">
@@ -155,6 +155,7 @@ td{padding:10px;border-bottom:1px solid #eee}
 <th>Total</th>
 <th>Pago</th>
 <th>Falta</th>
+<th>Ações</th>
 </tr>
 </thead>
 <tbody id="tabela"></tbody>
@@ -176,6 +177,7 @@ td{padding:10px;border-bottom:1px solid #eee}
 
 let produtos=JSON.parse(localStorage.getItem("produtos"))||[]
 let pedidos=JSON.parse(localStorage.getItem("pedidos"))||[]
+let editandoIndex=null
 
 window.onload=()=>{
 atualizarProdutos()
@@ -196,21 +198,16 @@ document.getElementById("menu").classList.remove("open")
 
 /* PRODUTOS */
 function cadastrarProduto(){
-let nome = nomeProduto.value.trim()
-let preco = precoProduto.value
+let nome=nomeProduto.value.trim()
+let preco=precoProduto.value
 
-if(!nome || !preco) return
+if(!nome||!preco)return
 
-let existe = produtos.some(p => p.nome.toLowerCase() === nome.toLowerCase())
+let existe=produtos.some(p=>p.nome.toLowerCase()===nome.toLowerCase())
+if(existe){alert("Produto já existe");return}
 
-if(existe){
-alert("Esse produto já existe!")
-return
-}
-
-produtos.push({nome, preco})
+produtos.push({nome,preco})
 localStorage.setItem("produtos",JSON.stringify(produtos))
-
 atualizarProdutos()
 listarProdutos()
 
@@ -229,15 +226,9 @@ produto.appendChild(op)
 }
 
 function listarProdutos(){
-let lista=document.getElementById("listaProdutos")
-lista.innerHTML=""
-
+listaProdutos.innerHTML=""
 produtos.forEach((p,i)=>{
-lista.innerHTML+=`
-<li>
-${p.nome} - R$ ${p.preco}
-<button onclick="removerProduto(${i})">❌</button>
-</li>`
+listaProdutos.innerHTML+=`<li>${p.nome} - R$ ${p.preco} <button onclick="removerProduto(${i})">❌</button></li>`
 })
 }
 
@@ -270,7 +261,7 @@ let totalCalc=produto.value*qtd.value
 let pago=pagamento.value==="Pago"?totalCalc:Number(valorPago.value||0)
 let falta=totalCalc-pago
 
-pedidos.push({
+let novo={
 data:dataPedido.value,
 cliente:cliente.value,
 vendedor:vendedor.value,
@@ -282,11 +273,25 @@ dataPg:dataPagamento.value,
 total:totalCalc,
 pago,
 falta
-})
+}
+
+if(editandoIndex!==null){
+pedidos[editandoIndex]=novo
+editandoIndex=null
+}else{
+pedidos.push(novo)
+}
 
 localStorage.setItem("pedidos",JSON.stringify(pedidos))
 carregar()
 gerarGrafico()
+
+dataPedido.value=""
+cliente.value=""
+vendedor.value=""
+descricao.value=""
+valorPago.value=""
+valorFalta.value=""
 }
 
 /* TABELA */
@@ -294,7 +299,7 @@ function carregar(lista=pedidos){
 tabela.innerHTML=""
 let totalCalc=0,rec=0,pen=0
 
-lista.forEach(p=>{
+lista.forEach((p,i)=>{
 tabela.innerHTML+=`
 <tr class="${p.falta>0?'devedor':''}">
 <td>${p.data}</td>
@@ -308,6 +313,10 @@ tabela.innerHTML+=`
 <td>${p.total}</td>
 <td>${p.pago}</td>
 <td>${p.falta}</td>
+<td>
+<button onclick="editarPedido(${i})">✏️</button>
+<button onclick="excluirPedido(${i})">🗑️</button>
+</td>
 </tr>`
 
 totalCalc+=p.total
@@ -315,35 +324,55 @@ rec+=p.pago
 pen+=p.falta
 })
 
-document.getElementById("total").innerText="💰 "+totalCalc
-document.getElementById("recebido").innerText="✅ "+rec
-document.getElementById("pendente").innerText="⏳ "+pen
+total.innerText="💰 "+totalCalc
+recebido.innerText="✅ "+rec
+pendente.innerText="⏳ "+pen
+}
+
+function editarPedido(i){
+let p=pedidos[i]
+
+dataPedido.value=p.data
+cliente.value=p.cliente
+vendedor.value=p.vendedor
+descricao.value=p.descricao
+status.value=p.status
+formaPagamento.value=p.forma
+dataPagamento.value=p.dataPg
+
+editandoIndex=i
+abrirTela('pedidos')
+window.scrollTo(0,0)
+}
+
+function excluirPedido(i){
+if(confirm("Excluir pedido?")){
+pedidos.splice(i,1)
+localStorage.setItem("pedidos",JSON.stringify(pedidos))
+carregar()
+gerarGrafico()
+}
 }
 
 /* BUSCA */
 function buscarPedidos(){
 let termo=busca.value.toLowerCase()
-
 let filtrados=pedidos.filter(p=>
-(p.cliente||"").toLowerCase().includes(termo) ||
-(p.vendedor||"").toLowerCase().includes(termo) ||
-(p.produto||"").toLowerCase().includes(termo) ||
-(p.descricao||"").toLowerCase().includes(termo) ||
-(p.data||"").includes(termo)
+(p.cliente||"").toLowerCase().includes(termo)||
+(p.vendedor||"").toLowerCase().includes(termo)||
+(p.produto||"").toLowerCase().includes(termo)||
+(p.descricao||"").toLowerCase().includes(termo)
 )
-
 carregar(filtrados)
 }
 
 /* FILTRO */
 function filtrarMes(m){
 abrirTela('pedidos')
-
 let filtrados=pedidos.filter(p=>{
 let d=new Date(p.data)
 return d.getMonth()===m
 })
-
 carregar(filtrados)
 }
 
