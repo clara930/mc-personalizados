@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Caixa Privado - MC Personalizados</title>
+
+<style>
+body {
+    font-family: Arial;
+    background: #ffe6f0;
+    margin: 0;
+    padding: 20px;
+}
+
+.container {
+    max-width: 900px;
+    margin: auto;
+    background: white;
+    border-radius: 20px;
+    padding: 20px;
+}
+
+h1 {
+    text-align: center;
+    color: #ff4da6;
+}
+
+input, select, button {
+    padding: 10px;
+    margin: 5px;
+    border-radius: 10px;
+    border: 1px solid #ffb6d9;
+}
+
+button {
+    background: #ff66b2;
+    color: white;
+    border: none;
+}
+
+table {
+    width: 100%;
+    margin-top: 20px;
+    border-collapse: collapse;
+}
+
+th {
+    background: #ffd6ec;
+    padding: 10px;
+}
+
+td {
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+<h1>🌸 Caixa MC Personalizados 🌸</h1>
+
+<input type="text" id="cliente" placeholder="Nome do cliente">
+
+<select id="produto">
+<option value="35">Caneca personalizada - R$35</option>
+<option value="55">Camisa personalizada - R$55</option>
+<option value="20">Adesivos (10 un) - R$20</option>
+<option value="25">Topo de bolo - R$25</option>
+<option value="15">Chaveiro personalizado - R$15</option>
+</select>
+
+<input type="number" id="qtd" value="1">
+
+<select id="pagamento" onchange="verificarPagamento()">
+<option value="Pago">Pago</option>
+<option value="Metade">Metade</option>
+<option value="Não pago">Não pago</option>
+</select>
+
+<input type="number" id="valorPago" placeholder="Quanto pagou?" style="display:none;">
+<input type="number" id="valorFalta" placeholder="Quanto falta pagar?" style="display:none;">
+
+<select id="forma">
+<option>Pix</option>
+<option>Dinheiro</option>
+<option>Cartão</option>
+</select>
+
+<br><br>
+
+<button onclick="adicionarPedido()">Adicionar pedido</button>
+
+<table>
+<thead>
+<tr>
+<th>Cliente</th>
+<th>Produto</th>
+<th>Qtd</th>
+<th>Valor</th>
+<th>Pagamento</th>
+<th>Forma</th>
+</tr>
+</thead>
+
+<tbody id="tabelaPedidos"></tbody>
+</table>
+
+<h2 id="total">Total do dia: R$ 0</h2>
+
+</div>
+
+<script>
+
+let total = 0;
+let pedidos = JSON.parse(localStorage.getItem("pedidosMC")) || [];
+
+window.onload = function() {
+    carregarPedidos();
+};
+
+function verificarPagamento() {
+    const pagamento = document.getElementById("pagamento").value;
+
+    if (pagamento === "Metade") {
+        document.getElementById("valorPago").style.display = "inline";
+        document.getElementById("valorFalta").style.display = "inline";
+    } else {
+        document.getElementById("valorPago").style.display = "none";
+        document.getElementById("valorFalta").style.display = "none";
+    }
+}
+
+function adicionarPedido() {
+
+    const cliente = document.getElementById("cliente").value;
+    const produto = document.getElementById("produto");
+    const nomeProduto = produto.options[produto.selectedIndex].text;
+    const preco = parseFloat(produto.value);
+    const qtd = parseInt(document.getElementById("qtd").value);
+    const pagamento = document.getElementById("pagamento").value;
+    const forma = document.getElementById("forma").value;
+
+    const valor = preco * qtd;
+
+    let infoPagamento = pagamento;
+
+    if (pagamento === "Metade") {
+        const valorPago = document.getElementById("valorPago").value;
+        const valorFalta = document.getElementById("valorFalta").value;
+        infoPagamento = `Pagou R$ ${valorPago} | Falta R$ ${valorFalta}`;
+    }
+
+    const novoPedido = {
+        cliente,
+        produto: nomeProduto,
+        qtd,
+        valor,
+        pagamento: infoPagamento,
+        forma
+    };
+
+    pedidos.push(novoPedido);
+    localStorage.setItem("pedidosMC", JSON.stringify(pedidos));
+
+    carregarPedidos();
+}
+
+function carregarPedidos() {
+
+    const tabela = document.getElementById("tabelaPedidos");
+    tabela.innerHTML = "";
+    total = 0;
+
+    pedidos.forEach(p => {
+
+        total += p.valor;
+
+        const linha = `<tr>
+            <td>${p.cliente}</td>
+            <td>${p.produto}</td>
+            <td>${p.qtd}</td>
+            <td>R$ ${p.valor}</td>
+            <td>${p.pagamento}</td>
+            <td>${p.forma}</td>
+        </tr>`;
+
+        tabela.innerHTML += linha;
+    });
+
+    document.getElementById("total").innerText = "Total do dia: R$ " + total;
+}
+
+</script>
+
+</body>
+</html>
