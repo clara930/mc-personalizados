@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MC Personalizados</title>
 
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#ff66b2">
+
 <style>
 body {
     font-family: Arial;
@@ -40,12 +43,14 @@ button {
     border: none;
     font-weight: bold;
     cursor: pointer;
-    transition: 0.2s;
 }
 
 button:hover {
     background: #ff4da6;
-    transform: scale(1.05);
+}
+
+#meses button {
+    margin: 3px;
 }
 
 table {
@@ -75,48 +80,52 @@ h2 {
 <body>
 
 <div class="container">
-<h1>🌸 Caixa MC Personalizados 🌸</h1>
+
+<h1>🌸 MC Personalizados 🌸</h1>
+
+<a href="https://wa.me/55SEUNUMERO" target="_blank">
+<button style="background:#25D366;">📲 WhatsApp</button>
+</a>
 
 <h3>Cadastrar produto</h3>
-<input type="text" id="nomeProduto" placeholder="Nome do produto">
-<input type="number" id="precoProduto" placeholder="Preço">
-<button onclick="cadastrarProduto()">Salvar produto</button>
+<input id="nomeProduto" placeholder="Nome do produto">
+<input id="precoProduto" type="number" placeholder="Preço">
+<button onclick="cadastrarProduto()">Salvar</button>
 
 <hr>
 
 <input type="date" id="dataPedido">
-<input type="text" id="cliente" placeholder="Nome do cliente">
-<input type="text" id="vendedor" placeholder="Quem vendeu?">
-
-<br>
+<input id="cliente" placeholder="Cliente">
+<input id="vendedor" placeholder="Vendedor">
 
 <select id="produto"></select>
-<input type="number" id="qtd" value="1">
+<input id="qtd" type="number" value="1">
 
-<select id="pagamento" onchange="calcularRestante()">
+<select id="pagamento">
 <option value="Pago">Pago</option>
-<option value="Metade">Pagou parte</option>
-<option value="Não pago">Não pagou</option>
-</select>
-
-<input type="number" id="valorPago" placeholder="Quanto pagou?" oninput="calcularRestante()" style="display:none;">
-<input type="number" id="valorFalta" placeholder="Falta pagar" style="display:none;" readonly>
-
-<select id="forma">
-<option>Pix</option>
-<option>Dinheiro</option>
-<option>Cartão</option>
+<option value="Não pago">Não pago</option>
 </select>
 
 <br><br>
 
 <button onclick="adicionarPedido()">Adicionar pedido</button>
-<button onclick="limparTudo()" style="background:red;">🧹 Apagar tudo</button>
+<button onclick="limparTudo()" style="background:red;">🧹 Limpar tudo</button>
 
-<br><br>
-
-<input type="date" onchange="filtrarPorData(this.value)">
-<button onclick="carregarPedidos()">Mostrar todos</button>
+<div id="meses">
+<button onclick="filtrarMes(0,this)">Jan</button>
+<button onclick="filtrarMes(1,this)">Fev</button>
+<button onclick="filtrarMes(2,this)">Mar</button>
+<button onclick="filtrarMes(3,this)">Abr</button>
+<button onclick="filtrarMes(4,this)">Mai</button>
+<button onclick="filtrarMes(5,this)">Jun</button>
+<button onclick="filtrarMes(6,this)">Jul</button>
+<button onclick="filtrarMes(7,this)">Ago</button>
+<button onclick="filtrarMes(8,this)">Set</button>
+<button onclick="filtrarMes(9,this)">Out</button>
+<button onclick="filtrarMes(10,this)">Nov</button>
+<button onclick="filtrarMes(11,this)">Dez</button>
+<button onclick="carregar()">Todos</button>
+</div>
 
 <table>
 <thead>
@@ -131,8 +140,7 @@ h2 {
 <th>Ações</th>
 </tr>
 </thead>
-
-<tbody id="tabelaPedidos"></tbody>
+<tbody id="tabela"></tbody>
 </table>
 
 <h2 id="total"></h2>
@@ -141,193 +149,148 @@ h2 {
 
 <script>
 
-let produtos = JSON.parse(localStorage.getItem("produtosMC")) || [];
-let pedidos = JSON.parse(localStorage.getItem("pedidosMC")) || [];
+let produtos = JSON.parse(localStorage.getItem("produtos")) || [];
+let pedidos = JSON.parse(localStorage.getItem("pedidos")) || [];
 
-window.onload = function() {
-    atualizarListaProdutos();
-    carregarPedidos();
+window.onload = () => {
+ atualizarProdutos();
+ carregar();
 };
 
-function cadastrarProduto() {
-    const nome = document.getElementById("nomeProduto").value;
-    const preco = document.getElementById("precoProduto").value;
-
-    if(nome === "" || preco === "") return;
-
-    produtos.push({nome, preco});
-    localStorage.setItem("produtosMC", JSON.stringify(produtos));
-
-    document.getElementById("nomeProduto").value = "";
-    document.getElementById("precoProduto").value = "";
-
-    atualizarListaProdutos();
+function cadastrarProduto(){
+ let nome = nomeProduto.value;
+ let preco = precoProduto.value;
+ if(!nome || !preco) return;
+ produtos.push({nome,preco});
+ localStorage.setItem("produtos",JSON.stringify(produtos));
+ nomeProduto.value="";
+ precoProduto.value="";
+ atualizarProdutos();
 }
 
-function atualizarListaProdutos() {
-    const select = document.getElementById("produto");
-    select.innerHTML = "";
-
-    produtos.forEach(p => {
-        const option = document.createElement("option");
-        option.value = p.preco;
-        option.text = `${p.nome} - R$ ${p.preco}`;
-        select.appendChild(option);
-    });
+function atualizarProdutos(){
+ produto.innerHTML="";
+ produtos.forEach(p=>{
+   let op=document.createElement("option");
+   op.value=p.preco;
+   op.text=p.nome+" R$"+p.preco;
+   produto.appendChild(op);
+ });
 }
 
-function calcularRestante() {
-    const pagamento = document.getElementById("pagamento").value;
-    const produto = document.getElementById("produto");
-    const preco = parseFloat(produto.value || 0);
-    const qtd = parseInt(document.getElementById("qtd").value || 1);
-    const totalPedido = preco * qtd;
-
-    if (pagamento === "Metade") {
-        document.getElementById("valorPago").style.display = "inline";
-        document.getElementById("valorFalta").style.display = "inline";
-
-        const pago = parseFloat(document.getElementById("valorPago").value) || 0;
-        const falta = totalPedido - pago;
-        document.getElementById("valorFalta").value = falta;
-
-    } else {
-        document.getElementById("valorPago").style.display = "none";
-        document.getElementById("valorFalta").style.display = "none";
-    }
+function adicionarPedido(){
+ let valor = produto.value*qtd.value;
+ let p = {
+  data:dataPedido.value,
+  cliente: cliente.value,
+  vendedor: vendedor.value,
+  produto: produto.options[produto.selectedIndex].text,
+  qtd:qtd.value,
+  valor: Number(valor),
+  pagamento: pagamento.value
+ };
+ pedidos.push(p);
+ localStorage.setItem("pedidos",JSON.stringify(pedidos));
+ carregar();
 }
 
-function adicionarPedido() {
-    const data = document.getElementById("dataPedido").value;
-    const cliente = document.getElementById("cliente").value;
-    const vendedor = document.getElementById("vendedor").value;
-
-    const produtoSelect = document.getElementById("produto");
-    const produtoNome = produtoSelect.options[produtoSelect.selectedIndex]?.text || "";
-    const preco = parseFloat(produtoSelect.value || 0);
-
-    const qtd = parseInt(document.getElementById("qtd").value || 1);
-    const pagamento = document.getElementById("pagamento").value;
-
-    const valorTotal = preco * qtd;
-
-    if (!data || !cliente || !produtoNome) {
-        alert("Preencha os campos obrigatórios!");
-        return;
-    }
-
-    const pedido = { data, cliente, produto: produtoNome, qtd, valor: valorTotal, pagamento, vendedor };
-
-    pedidos.push(pedido);
-    localStorage.setItem("pedidosMC", JSON.stringify(pedidos));
-
-    carregarPedidos();
-    limparCampos();
+function carregar(){
+ tabela.innerHTML="";
+ pedidos.forEach((p,i)=>{
+  tabela.innerHTML+=`
+  <tr>
+  <td>${p.data}</td>
+  <td>${p.cliente}</td>
+  <td>${p.produto}</td>
+  <td>${p.qtd}</td>
+  <td>R$ ${p.valor}</td>
+  <td>${p.pagamento}</td>
+  <td>${p.vendedor}</td>
+  <td>
+   <button onclick="editar(${i})">✏️</button>
+   <button onclick="excluir(${i})">❌</button>
+  </td>
+  </tr>`;
+ });
+ atualizarTotal();
 }
 
-function adicionarNaTabela(p, index) {
-    const tabela = document.getElementById("tabelaPedidos");
-    const linha = document.createElement("tr");
-
-    linha.innerHTML = `
-        <td>${p.data}</td>
-        <td>${p.cliente}</td>
-        <td>${p.produto}</td>
-        <td>${p.qtd}</td>
-        <td>R$ ${p.valor.toFixed(2)}</td>
-        <td>${p.pagamento}</td>
-        <td>${p.vendedor}</td>
-        <td>
-            <button onclick="editarPedido(${index})">✏️</button>
-            <button onclick="excluirPedido(${index})">❌</button>
-        </td>
-    `;
-
-    tabela.appendChild(linha);
+function excluir(i){
+ pedidos.splice(i,1);
+ localStorage.setItem("pedidos",JSON.stringify(pedidos));
+ carregar();
 }
 
-function carregarPedidos() {
-    const tabela = document.getElementById("tabelaPedidos");
-    tabela.innerHTML = "";
-
-    pedidos.forEach((p, i) => {
-        adicionarNaTabela(p, i);
-    });
-
-    atualizarTotal();
+function editar(i){
+ let p = pedidos[i];
+ cliente.value=p.cliente;
+ vendedor.value=p.vendedor;
+ qtd.value=p.qtd;
+ pedidos.splice(i,1);
+ carregar();
 }
 
-function excluirPedido(index) {
-    if (confirm("Deseja excluir este pedido?")) {
-        pedidos.splice(index, 1);
-        localStorage.setItem("pedidosMC", JSON.stringify(pedidos));
-        carregarPedidos();
-    }
+function atualizarTotal(){
+ let total=0, recebido=0, pendente=0;
+
+ pedidos.forEach(p=>{
+  total+=p.valor;
+  if(p.pagamento==="Pago") recebido+=p.valor;
+  else pendente+=p.valor;
+ });
+
+ totalHTML.innerHTML=`
+ 💰 Total: R$ ${total}<br>
+ ✅ Recebido: R$ ${recebido}<br>
+ ⏳ Pendente: R$ ${pendente}
+ `;
 }
 
-function editarPedido(index) {
-    const p = pedidos[index];
+function filtrarMes(mes,botao){
+ document.querySelectorAll("#meses button").forEach(b=>b.style.background="#ff66b2");
+ if(botao) botao.style.background="#ff1493";
 
-    document.getElementById("dataPedido").value = p.data;
-    document.getElementById("cliente").value = p.cliente;
-    document.getElementById("vendedor").value = p.vendedor;
-    document.getElementById("qtd").value = p.qtd;
+ tabela.innerHTML="";
+ let total=0, recebido=0, pendente=0, qtdMes=0;
 
-    pedidos.splice(index, 1);
-    localStorage.setItem("pedidosMC", JSON.stringify(pedidos));
+ pedidos.forEach((p,i)=>{
+  let d=new Date(p.data);
+  if(d.getMonth()===mes){
+   qtdMes++;
+   total+=p.valor;
+   if(p.pagamento==="Pago") recebido+=p.valor;
+   else pendente+=p.valor;
 
-    carregarPedidos();
+   tabela.innerHTML+=`
+   <tr>
+   <td>${p.data}</td>
+   <td>${p.cliente}</td>
+   <td>${p.produto}</td>
+   <td>${p.qtd}</td>
+   <td>R$ ${p.valor}</td>
+   <td>${p.pagamento}</td>
+   <td>${p.vendedor}</td>
+   <td></td>
+   </tr>`;
+  }
+ });
+
+ totalHTML.innerHTML=`
+ 📦 Pedidos: ${qtdMes}<br>
+ 💰 Total: R$ ${total}<br>
+ ✅ Recebido: R$ ${recebido}<br>
+ ⏳ Pendente: R$ ${pendente}
+ `;
 }
 
-function atualizarTotal() {
-    let total = 0;
-    let recebido = 0;
-    let pendente = 0;
-
-    pedidos.forEach(p => {
-        total += p.valor;
-
-        if (p.pagamento === "Pago") {
-            recebido += p.valor;
-        } else {
-            pendente += p.valor;
-        }
-    });
-
-    document.getElementById("total").innerHTML = `
-        💰 Total: R$ ${total.toFixed(2)} <br>
-        ✅ Recebido: R$ ${recebido.toFixed(2)} <br>
-        ⏳ Pendente: R$ ${pendente.toFixed(2)}
-    `;
-}
-
-function filtrarPorData(data) {
-    const tabela = document.getElementById("tabelaPedidos");
-    tabela.innerHTML = "";
-
-    pedidos.forEach((p, i) => {
-        if (p.data === data) {
-            adicionarNaTabela(p, i);
-        }
-    });
-}
-
-function limparCampos() {
-    document.getElementById("cliente").value = "";
-    document.getElementById("vendedor").value = "";
-    document.getElementById("qtd").value = 1;
-    document.getElementById("valorPago").value = "";
-    document.getElementById("valorFalta").value = "";
-}
-
-function limparTudo() {
-    if (confirm("Tem certeza que deseja apagar TODOS os dados?")) {
-        localStorage.clear();
-        pedidos = [];
-        produtos = [];
-        carregarPedidos();
-        atualizarListaProdutos();
-    }
+function limparTudo(){
+ if(confirm("Apagar tudo?")){
+  localStorage.clear();
+  pedidos=[];
+  produtos=[];
+  carregar();
+  atualizarProdutos();
+ }
 }
 
 </script>
