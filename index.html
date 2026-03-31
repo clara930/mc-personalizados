@@ -56,6 +56,21 @@ td{padding:10px;border-bottom:1px solid #eee}
 <a onclick="abrirTela('produtos')">📦 Produtos</a>
 <a onclick="abrirTela('pedidos')">💰 Pedidos</a>
 <a onclick="abrirTela('grafico')">📊 Gráfico</a>
+
+<hr>
+
+<a onclick="filtrarMes(0)">Janeiro</a>
+<a onclick="filtrarMes(1)">Fevereiro</a>
+<a onclick="filtrarMes(2)">Março</a>
+<a onclick="filtrarMes(3)">Abril</a>
+<a onclick="filtrarMes(4)">Maio</a>
+<a onclick="filtrarMes(5)">Junho</a>
+<a onclick="filtrarMes(6)">Julho</a>
+<a onclick="filtrarMes(7)">Agosto</a>
+<a onclick="filtrarMes(8)">Setembro</a>
+<a onclick="filtrarMes(9)">Outubro</a>
+<a onclick="filtrarMes(10)">Novembro</a>
+<a onclick="filtrarMes(11)">Dezembro</a>
 </div>
 
 <div class="container">
@@ -165,17 +180,20 @@ carregar()
 gerarGrafico()
 }
 
+/* MENU */
 function toggleMenu(){
-menu.classList.toggle("open")
+document.getElementById("menu").classList.toggle("open")
 }
 
 function abrirTela(t){
 document.querySelectorAll(".tela").forEach(e=>e.classList.remove("ativa"))
 document.getElementById(t).classList.add("ativa")
-menu.classList.remove("open")
+document.getElementById("menu").classList.remove("open")
 }
 
+/* PRODUTOS */
 function cadastrarProduto(){
+if(!nomeProduto.value || !precoProduto.value) return
 produtos.push({nome:nomeProduto.value,preco:precoProduto.value})
 localStorage.setItem("produtos",JSON.stringify(produtos))
 atualizarProdutos()
@@ -191,6 +209,7 @@ produto.appendChild(op)
 })
 }
 
+/* PAGAMENTO */
 function mostrarParcial(){
 if(pagamento.value==="Metade"){
 valorPago.style.display="inline"
@@ -201,10 +220,16 @@ valorFalta.style.display="none"
 }
 }
 
+valorPago.addEventListener("input",()=>{
+let totalCalc=produto.value*qtd.value
+valorFalta.value=totalCalc-(valorPago.value||0)
+})
+
+/* PEDIDOS */
 function adicionarPedido(){
-let total=produto.value*qtd.value
-let pago=pagamento.value==="Pago"?total:Number(valorPago.value||0)
-let falta=total-pago
+let totalCalc=produto.value*qtd.value
+let pago=pagamento.value==="Pago"?totalCalc:Number(valorPago.value||0)
+let falta=totalCalc-pago
 
 pedidos.push({
 data:dataPedido.value,
@@ -215,7 +240,9 @@ descricao:descricao.value,
 status:status.value,
 forma:formaPagamento.value,
 dataPg:dataPagamento.value,
-total,pago,falta
+total:totalCalc,
+pago,
+falta
 })
 
 localStorage.setItem("pedidos",JSON.stringify(pedidos))
@@ -223,9 +250,10 @@ carregar()
 gerarGrafico()
 }
 
+/* TABELA */
 function carregar(lista=pedidos){
 tabela.innerHTML=""
-let total=0,rec=0,pen=0
+let totalCalc=0,rec=0,pen=0
 
 lista.forEach(p=>{
 tabela.innerHTML+=`
@@ -243,16 +271,17 @@ tabela.innerHTML+=`
 <td>${p.falta}</td>
 </tr>`
 
-total+=p.total
+totalCalc+=p.total
 rec+=p.pago
 pen+=p.falta
 })
 
-totalEl.innerText="💰 "+total
-recebido.innerText="✅ "+rec
-pendente.innerText="⏳ "+pen
+document.getElementById("total").innerText="💰 "+totalCalc
+document.getElementById("recebido").innerText="✅ "+rec
+document.getElementById("pendente").innerText="⏳ "+pen
 }
 
+/* BUSCA */
 function buscarPedidos(){
 let termo=busca.value.toLowerCase()
 
@@ -267,6 +296,19 @@ let filtrados=pedidos.filter(p=>
 carregar(filtrados)
 }
 
+/* FILTRO POR MÊS */
+function filtrarMes(m){
+abrirTela('pedidos')
+
+let filtrados=pedidos.filter(p=>{
+let d=new Date(p.data)
+return d.getMonth()===m
+})
+
+carregar(filtrados)
+}
+
+/* GRÁFICO */
 function gerarGrafico(){
 let meses=Array(12).fill(0)
 
