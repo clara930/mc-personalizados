@@ -6,123 +6,93 @@
 <title>MC Personalizados</title>
 
 <style>
-body {
-    margin: 0;
-    font-family: Arial;
-    background: #fff0f7;
-}
-
-/* MENU */
-.menu-btn {
-    font-size: 25px;
-    padding: 15px;
-    cursor: pointer;
-}
+body {margin:0;font-family:Arial;background:#fff0f7;}
+.topbar {background:#ff66b2;color:white;padding:15px;display:flex;align-items:center;}
+.menu-btn {font-size:25px;margin-right:15px;cursor:pointer;}
 
 .sidebar {
-    position: fixed;
-    left: -250px;
-    top: 0;
-    width: 250px;
-    height: 100%;
-    background: #ff66b2;
-    color: white;
-    transition: 0.3s;
-    padding-top: 20px;
+ position:fixed;left:-250px;top:0;width:250px;height:100%;
+ background:#ff66b2;color:white;transition:0.3s;padding-top:20px;
+}
+.sidebar a {display:block;padding:15px;color:white;text-decoration:none;}
+.sidebar a:hover {background:#ff4da6;}
+.open {left:0;}
+
+.container {padding:20px;}
+.card {background:white;border-radius:15px;padding:15px;margin-bottom:15px;}
+
+.tela {display:none;}
+.tela.ativa {display:block;}
+
+input,select,button {
+ padding:10px;margin:5px;border-radius:10px;border:1px solid #ffc4e1;
+}
+button {background:#ff66b2;color:white;border:none;}
+
+.resumo {display:flex;gap:10px;}
+.resumo div {
+ flex:1;background:#ffe0f0;padding:10px;border-radius:10px;text-align:center;
 }
 
-.sidebar a {
-    display: block;
-    padding: 15px;
-    color: white;
-    text-decoration: none;
-}
-
-.sidebar a:hover {
-    background: #ff4da6;
-}
-
-.open {
-    left: 0;
-}
-
-/* CONTEÚDO */
-.container {
-    padding: 20px;
-}
-
-.card {
-    background: white;
-    border-radius: 15px;
-    padding: 15px;
-    margin-bottom: 15px;
-}
-
-input, select, button {
-    padding: 10px;
-    margin: 5px;
-    border-radius: 10px;
-    border: 1px solid #ffc4e1;
-}
-
-button {
-    background: #ff66b2;
-    color: white;
-    border: none;
-}
-
-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-th {
-    background: #ffe0f0;
-    padding: 10px;
-}
-
-td {
-    padding: 10px;
-}
+table {width:100%;border-collapse:collapse;}
+th {background:#ffe0f0;padding:10px;}
+td {padding:10px;border-bottom:1px solid #eee;}
 </style>
 </head>
 
 <body>
 
+<div class="topbar">
 <div class="menu-btn" onclick="toggleMenu()">☰</div>
+<b>MC Personalizados</b>
+</div>
 
 <div id="menu" class="sidebar">
-<a href="#">🏠 Início</a>
-<a href="#">📦 Produtos</a>
-<a href="#">💰 Vendas</a>
-<a href="#">📊 Relatório</a>
+<a onclick="abrirTela('home')">🏠 Início</a>
+<a onclick="abrirTela('produtos')">📦 Produtos</a>
+<a onclick="abrirTela('pedidos')">💰 Pedidos</a>
 </div>
 
 <div class="container">
 
-<h2>🌸 MC Personalizados</h2>
+<!-- HOME -->
+<div id="home" class="tela ativa">
+<div class="card resumo">
+<div id="total">Total</div>
+<div id="recebido">Recebido</div>
+<div id="pendente">Pendente</div>
+</div>
+</div>
 
+<!-- PRODUTOS -->
+<div id="produtos" class="tela">
 <div class="card">
-<h3>Cadastro</h3>
-<input id="nomeProduto" placeholder="Produto">
+<h3>Cadastrar Produto</h3>
+<input id="nomeProduto" placeholder="Nome">
 <input id="precoProduto" type="number" placeholder="Preço">
 <button onclick="cadastrarProduto()">Salvar</button>
 </div>
+</div>
+
+<!-- PEDIDOS -->
+<div id="pedidos" class="tela">
 
 <div class="card">
 <h3>Novo Pedido</h3>
 
+<input type="date" id="dataPedido">
 <input id="cliente" placeholder="Cliente">
+
 <select id="produto"></select>
 <input id="qtd" type="number" value="1">
 
 <select id="pagamento" onchange="mostrarParcial()">
 <option value="Pago">Pago</option>
-<option value="Metade">Metade</option>
-<option value="Não pago">Não pago</option>
+<option value="Metade">Pagou parte</option>
+<option value="Não pago">Não pagou</option>
 </select>
 
-<input id="valorPago" type="number" placeholder="Pagou quanto" style="display:none;">
+<input id="valorPago" type="number" placeholder="Quanto pagou" style="display:none;">
 <input id="valorFalta" type="number" placeholder="Falta" readonly style="display:none;">
 
 <button onclick="adicionarPedido()">Adicionar</button>
@@ -133,7 +103,9 @@ td {
 <table>
 <thead>
 <tr>
+<th>Data</th>
 <th>Cliente</th>
+<th>Produto</th>
 <th>Total</th>
 <th>Pago</th>
 <th>Falta</th>
@@ -145,61 +117,125 @@ td {
 
 </div>
 
+</div>
+
 <script>
 
-let produtos = [];
-let pedidos = [];
+let produtos = JSON.parse(localStorage.getItem("produtos")) || [];
+let pedidos = JSON.parse(localStorage.getItem("pedidos")) || [];
 
+window.onload = ()=>{
+ atualizarProdutos();
+ carregar();
+};
+
+/* MENU */
 function toggleMenu(){
- document.getElementById("menu").classList.toggle("open");
+ let menu = document.getElementById("menu");
+ menu.classList.toggle("open");
 }
 
+/* TELAS */
+function abrirTela(t){
+ document.querySelectorAll(".tela").forEach(el=>el.classList.remove("ativa"));
+ document.getElementById(t).classList.add("ativa");
+
+ document.getElementById("menu").classList.remove("open"); // fecha menu
+}
+
+/* PRODUTOS */
 function cadastrarProduto(){
- produtos.push({nome:nomeProduto.value,preco:precoProduto.value});
+ let nome = nomeProduto.value;
+ let preco = precoProduto.value;
+ if(!nome || !preco) return;
+
+ produtos.push({nome,preco});
+ localStorage.setItem("produtos",JSON.stringify(produtos));
+
+ nomeProduto.value="";
+ precoProduto.value="";
+
  atualizarProdutos();
 }
 
 function atualizarProdutos(){
- produto.innerHTML="";
+ let select = document.getElementById("produto");
+ select.innerHTML="";
+
  produtos.forEach(p=>{
  let op=document.createElement("option");
  op.value=p.preco;
- op.text=p.nome;
- produto.appendChild(op);
+ op.text=p.nome+" - R$ "+p.preco;
+ select.appendChild(op);
  });
 }
 
+/* PAGAMENTO */
 function mostrarParcial(){
  if(pagamento.value==="Metade"){
   valorPago.style.display="inline";
   valorFalta.style.display="inline";
+ }else{
+  valorPago.style.display="none";
+  valorFalta.style.display="none";
  }
 }
 
-valorPago.addEventListener("input",()=>{
- let total=produto.value*qtd.value;
- valorFalta.value=total-valorPago.value;
-});
+valorPago.addEventListener("input", calcularFalta);
+qtd.addEventListener("input", calcularFalta);
+produto.addEventListener("change", calcularFalta);
 
+function calcularFalta(){
+ let total = produto.value*qtd.value;
+ let pago = Number(valorPago.value||0);
+ valorFalta.value = total - pago;
+}
+
+/* PEDIDOS */
 function adicionarPedido(){
- let total=produto.value*qtd.value;
- let pago=pagamento.value==="Pago"?total:Number(valorPago.value||0);
- let falta=total-pago;
+ let total = produto.value*qtd.value;
+ let pago = pagamento.value==="Pago"?total:Number(valorPago.value||0);
+ let falta = total - pago;
 
- pedidos.push({cliente:cliente.value,total,pago,falta});
+ let p = {
+  data:dataPedido.value,
+  cliente:cliente.value,
+  produto:produto.options[produto.selectedIndex].text,
+  total,pago,falta
+ };
+
+ pedidos.push(p);
+ localStorage.setItem("pedidos",JSON.stringify(pedidos));
+
  carregar();
 }
 
+/* TABELA + RESUMO */
 function carregar(){
+ let tabela = document.getElementById("tabela");
  tabela.innerHTML="";
+
+ let total=0, recebido=0, pendente=0;
+
  pedidos.forEach(p=>{
- tabela.innerHTML+=`<tr>
+ tabela.innerHTML+=`
+ <tr>
+ <td>${p.data}</td>
  <td>${p.cliente}</td>
+ <td>${p.produto}</td>
  <td>${p.total}</td>
  <td>${p.pago}</td>
  <td>${p.falta}</td>
  </tr>`;
+
+ total+=p.total;
+ recebido+=p.pago;
+ pendente+=p.falta;
  });
+
+ document.getElementById("total").innerText="💰 "+total;
+ document.getElementById("recebido").innerText="✅ "+recebido;
+ document.getElementById("pendente").innerText="⏳ "+pendente;
 }
 
 </script>
