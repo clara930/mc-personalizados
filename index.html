@@ -8,16 +8,16 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-body{margin:0;font-family:Arial;background:#fff0f7}
-.topbar{background:#ff66b2;color:white;padding:15px;display:flex;align-items:center}
+body{margin:0;font-family:Arial;background:#f5edff}
+.topbar{background:#a259ff;color:white;padding:15px;display:flex;align-items:center}
 .menu-btn{font-size:25px;margin-right:15px;cursor:pointer}
 
 .sidebar{
 position:fixed;left:-250px;top:0;width:250px;height:100%;
-background:#ff66b2;color:white;transition:0.3s;padding-top:20px;overflow:auto
+background:#a259ff;color:white;transition:0.3s;padding-top:20px;overflow:auto
 }
 .sidebar a{display:block;padding:15px;color:white;text-decoration:none}
-.sidebar a:hover{background:#ff4da6}
+.sidebar a:hover{background:#8b3dff}
 .open{left:0}
 
 .container{padding:20px}
@@ -28,19 +28,19 @@ background:#ff66b2;color:white;transition:0.3s;padding-top:20px;overflow:auto
 .tela.ativa{display:block}
 
 input,select,button{
-padding:10px;margin:5px;border-radius:10px;border:1px solid #ffc4e1
+padding:10px;margin:5px;border-radius:10px;border:1px solid #d6b8ff
 }
 
-button{background:#ff66b2;color:white;border:none}
+button{background:#a259ff;color:white;border:none}
 
 .resumo{display:flex;gap:10px}
-.resumo div{flex:1;background:#ffe0f0;padding:10px;border-radius:10px;text-align:center}
+.resumo div{flex:1;background:#e6d6ff;padding:10px;border-radius:10px;text-align:center}
 
 table{width:100%;border-collapse:collapse}
-th{background:#ffe0f0;padding:10px}
+th{background:#e6d6ff;padding:10px}
 td{padding:10px;border-bottom:1px solid #eee}
 
-.devedor{background:#ffd6d6}
+.devedor{background:#ffd6f5}
 </style>
 </head>
 
@@ -89,6 +89,9 @@ td{padding:10px;border-bottom:1px solid #eee}
 <input id="nomeProduto" placeholder="Nome">
 <input id="precoProduto" type="number" placeholder="Preço">
 <button onclick="cadastrarProduto()">Salvar</button>
+
+<h4>Produtos cadastrados:</h4>
+<ul id="listaProdutos"></ul>
 </div>
 </div>
 
@@ -176,11 +179,11 @@ let pedidos=JSON.parse(localStorage.getItem("pedidos"))||[]
 
 window.onload=()=>{
 atualizarProdutos()
+listarProdutos()
 carregar()
 gerarGrafico()
 }
 
-/* MENU */
 function toggleMenu(){
 document.getElementById("menu").classList.toggle("open")
 }
@@ -193,10 +196,26 @@ document.getElementById("menu").classList.remove("open")
 
 /* PRODUTOS */
 function cadastrarProduto(){
-if(!nomeProduto.value || !precoProduto.value) return
-produtos.push({nome:nomeProduto.value,preco:precoProduto.value})
+let nome = nomeProduto.value.trim()
+let preco = precoProduto.value
+
+if(!nome || !preco) return
+
+let existe = produtos.some(p => p.nome.toLowerCase() === nome.toLowerCase())
+
+if(existe){
+alert("Esse produto já existe!")
+return
+}
+
+produtos.push({nome, preco})
 localStorage.setItem("produtos",JSON.stringify(produtos))
+
 atualizarProdutos()
+listarProdutos()
+
+nomeProduto.value=""
+precoProduto.value=""
 }
 
 function atualizarProdutos(){
@@ -207,6 +226,26 @@ op.value=p.preco
 op.text=p.nome+" - R$ "+p.preco
 produto.appendChild(op)
 })
+}
+
+function listarProdutos(){
+let lista=document.getElementById("listaProdutos")
+lista.innerHTML=""
+
+produtos.forEach((p,i)=>{
+lista.innerHTML+=`
+<li>
+${p.nome} - R$ ${p.preco}
+<button onclick="removerProduto(${i})">❌</button>
+</li>`
+})
+}
+
+function removerProduto(i){
+produtos.splice(i,1)
+localStorage.setItem("produtos",JSON.stringify(produtos))
+atualizarProdutos()
+listarProdutos()
 }
 
 /* PAGAMENTO */
@@ -296,7 +335,7 @@ let filtrados=pedidos.filter(p=>
 carregar(filtrados)
 }
 
-/* FILTRO POR MÊS */
+/* FILTRO */
 function filtrarMes(m){
 abrirTela('pedidos')
 
