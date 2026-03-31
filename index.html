@@ -5,34 +5,62 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MC Personalizados</title>
 
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#ff66b2">
-
 <style>
 body {
-    font-family: Arial;
-    background: linear-gradient(135deg,#ffe6f2,#fff0f7);
     margin: 0;
-    padding: 20px;
+    font-family: Arial;
+    background: #fff0f7;
 }
 
+/* MENU */
+.menu-btn {
+    font-size: 25px;
+    padding: 15px;
+    cursor: pointer;
+}
+
+.sidebar {
+    position: fixed;
+    left: -250px;
+    top: 0;
+    width: 250px;
+    height: 100%;
+    background: #ff66b2;
+    color: white;
+    transition: 0.3s;
+    padding-top: 20px;
+}
+
+.sidebar a {
+    display: block;
+    padding: 15px;
+    color: white;
+    text-decoration: none;
+}
+
+.sidebar a:hover {
+    background: #ff4da6;
+}
+
+.open {
+    left: 0;
+}
+
+/* CONTEÚDO */
 .container {
-    max-width: 900px;
-    margin: auto;
-    background: white;
-    border-radius: 20px;
     padding: 20px;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.08);
 }
 
-h1 {
-    text-align: center;
-    color: #ff4da6;
+.card {
+    background: white;
+    border-radius: 15px;
+    padding: 15px;
+    margin-bottom: 15px;
 }
 
 input, select, button {
     padding: 10px;
-    margin: 6px 4px;
+    margin: 5px;
     border-radius: 10px;
     border: 1px solid #ffc4e1;
 }
@@ -41,21 +69,10 @@ button {
     background: #ff66b2;
     color: white;
     border: none;
-    font-weight: bold;
-    cursor: pointer;
-}
-
-button:hover {
-    background: #ff4da6;
-}
-
-#meses button {
-    margin: 3px;
 }
 
 table {
     width: 100%;
-    margin-top: 20px;
     border-collapse: collapse;
 }
 
@@ -66,231 +83,123 @@ th {
 
 td {
     padding: 10px;
-    border-bottom: 1px solid #eee;
-}
-
-h2 {
-    background: #fff0f7;
-    padding: 10px;
-    border-radius: 10px;
 }
 </style>
 </head>
 
 <body>
 
+<div class="menu-btn" onclick="toggleMenu()">☰</div>
+
+<div id="menu" class="sidebar">
+<a href="#">🏠 Início</a>
+<a href="#">📦 Produtos</a>
+<a href="#">💰 Vendas</a>
+<a href="#">📊 Relatório</a>
+</div>
+
 <div class="container">
 
-<h1>🌸 MC Personalizados 🌸</h1>
+<h2>🌸 MC Personalizados</h2>
 
-<a href="https://wa.me/55SEUNUMERO" target="_blank">
-<button style="background:#25D366;">📲 WhatsApp</button>
-</a>
-
-<h3>Cadastrar produto</h3>
-<input id="nomeProduto" placeholder="Nome do produto">
+<div class="card">
+<h3>Cadastro</h3>
+<input id="nomeProduto" placeholder="Produto">
 <input id="precoProduto" type="number" placeholder="Preço">
 <button onclick="cadastrarProduto()">Salvar</button>
+</div>
 
-<hr>
+<div class="card">
+<h3>Novo Pedido</h3>
 
-<input type="date" id="dataPedido">
 <input id="cliente" placeholder="Cliente">
-<input id="vendedor" placeholder="Vendedor">
-
 <select id="produto"></select>
 <input id="qtd" type="number" value="1">
 
-<select id="pagamento">
+<select id="pagamento" onchange="mostrarParcial()">
 <option value="Pago">Pago</option>
+<option value="Metade">Metade</option>
 <option value="Não pago">Não pago</option>
 </select>
 
-<br><br>
+<input id="valorPago" type="number" placeholder="Pagou quanto" style="display:none;">
+<input id="valorFalta" type="number" placeholder="Falta" readonly style="display:none;">
 
-<button onclick="adicionarPedido()">Adicionar pedido</button>
-<button onclick="limparTudo()" style="background:red;">🧹 Limpar tudo</button>
-
-<div id="meses">
-<button onclick="filtrarMes(0,this)">Jan</button>
-<button onclick="filtrarMes(1,this)">Fev</button>
-<button onclick="filtrarMes(2,this)">Mar</button>
-<button onclick="filtrarMes(3,this)">Abr</button>
-<button onclick="filtrarMes(4,this)">Mai</button>
-<button onclick="filtrarMes(5,this)">Jun</button>
-<button onclick="filtrarMes(6,this)">Jul</button>
-<button onclick="filtrarMes(7,this)">Ago</button>
-<button onclick="filtrarMes(8,this)">Set</button>
-<button onclick="filtrarMes(9,this)">Out</button>
-<button onclick="filtrarMes(10,this)">Nov</button>
-<button onclick="filtrarMes(11,this)">Dez</button>
-<button onclick="carregar()">Todos</button>
+<button onclick="adicionarPedido()">Adicionar</button>
 </div>
 
+<div class="card">
+<h3>Pedidos</h3>
 <table>
 <thead>
 <tr>
-<th>Data</th>
 <th>Cliente</th>
-<th>Produto</th>
-<th>Qtd</th>
-<th>Valor</th>
-<th>Pagamento</th>
-<th>Vendedor</th>
-<th>Ações</th>
+<th>Total</th>
+<th>Pago</th>
+<th>Falta</th>
 </tr>
 </thead>
 <tbody id="tabela"></tbody>
 </table>
-
-<h2 id="total"></h2>
+</div>
 
 </div>
 
 <script>
 
-let produtos = JSON.parse(localStorage.getItem("produtos")) || [];
-let pedidos = JSON.parse(localStorage.getItem("pedidos")) || [];
+let produtos = [];
+let pedidos = [];
 
-window.onload = () => {
- atualizarProdutos();
- carregar();
-};
+function toggleMenu(){
+ document.getElementById("menu").classList.toggle("open");
+}
 
 function cadastrarProduto(){
- let nome = nomeProduto.value;
- let preco = precoProduto.value;
- if(!nome || !preco) return;
- produtos.push({nome,preco});
- localStorage.setItem("produtos",JSON.stringify(produtos));
- nomeProduto.value="";
- precoProduto.value="";
+ produtos.push({nome:nomeProduto.value,preco:precoProduto.value});
  atualizarProdutos();
 }
 
 function atualizarProdutos(){
  produto.innerHTML="";
  produtos.forEach(p=>{
-   let op=document.createElement("option");
-   op.value=p.preco;
-   op.text=p.nome+" R$"+p.preco;
-   produto.appendChild(op);
+ let op=document.createElement("option");
+ op.value=p.preco;
+ op.text=p.nome;
+ produto.appendChild(op);
  });
 }
 
+function mostrarParcial(){
+ if(pagamento.value==="Metade"){
+  valorPago.style.display="inline";
+  valorFalta.style.display="inline";
+ }
+}
+
+valorPago.addEventListener("input",()=>{
+ let total=produto.value*qtd.value;
+ valorFalta.value=total-valorPago.value;
+});
+
 function adicionarPedido(){
- let valor = produto.value*qtd.value;
- let p = {
-  data:dataPedido.value,
-  cliente: cliente.value,
-  vendedor: vendedor.value,
-  produto: produto.options[produto.selectedIndex].text,
-  qtd:qtd.value,
-  valor: Number(valor),
-  pagamento: pagamento.value
- };
- pedidos.push(p);
- localStorage.setItem("pedidos",JSON.stringify(pedidos));
+ let total=produto.value*qtd.value;
+ let pago=pagamento.value==="Pago"?total:Number(valorPago.value||0);
+ let falta=total-pago;
+
+ pedidos.push({cliente:cliente.value,total,pago,falta});
  carregar();
 }
 
 function carregar(){
  tabela.innerHTML="";
- pedidos.forEach((p,i)=>{
-  tabela.innerHTML+=`
-  <tr>
-  <td>${p.data}</td>
-  <td>${p.cliente}</td>
-  <td>${p.produto}</td>
-  <td>${p.qtd}</td>
-  <td>R$ ${p.valor}</td>
-  <td>${p.pagamento}</td>
-  <td>${p.vendedor}</td>
-  <td>
-   <button onclick="editar(${i})">✏️</button>
-   <button onclick="excluir(${i})">❌</button>
-  </td>
-  </tr>`;
- });
- atualizarTotal();
-}
-
-function excluir(i){
- pedidos.splice(i,1);
- localStorage.setItem("pedidos",JSON.stringify(pedidos));
- carregar();
-}
-
-function editar(i){
- let p = pedidos[i];
- cliente.value=p.cliente;
- vendedor.value=p.vendedor;
- qtd.value=p.qtd;
- pedidos.splice(i,1);
- carregar();
-}
-
-function atualizarTotal(){
- let total=0, recebido=0, pendente=0;
-
  pedidos.forEach(p=>{
-  total+=p.valor;
-  if(p.pagamento==="Pago") recebido+=p.valor;
-  else pendente+=p.valor;
+ tabela.innerHTML+=`<tr>
+ <td>${p.cliente}</td>
+ <td>${p.total}</td>
+ <td>${p.pago}</td>
+ <td>${p.falta}</td>
+ </tr>`;
  });
-
- totalHTML.innerHTML=`
- 💰 Total: R$ ${total}<br>
- ✅ Recebido: R$ ${recebido}<br>
- ⏳ Pendente: R$ ${pendente}
- `;
-}
-
-function filtrarMes(mes,botao){
- document.querySelectorAll("#meses button").forEach(b=>b.style.background="#ff66b2");
- if(botao) botao.style.background="#ff1493";
-
- tabela.innerHTML="";
- let total=0, recebido=0, pendente=0, qtdMes=0;
-
- pedidos.forEach((p,i)=>{
-  let d=new Date(p.data);
-  if(d.getMonth()===mes){
-   qtdMes++;
-   total+=p.valor;
-   if(p.pagamento==="Pago") recebido+=p.valor;
-   else pendente+=p.valor;
-
-   tabela.innerHTML+=`
-   <tr>
-   <td>${p.data}</td>
-   <td>${p.cliente}</td>
-   <td>${p.produto}</td>
-   <td>${p.qtd}</td>
-   <td>R$ ${p.valor}</td>
-   <td>${p.pagamento}</td>
-   <td>${p.vendedor}</td>
-   <td></td>
-   </tr>`;
-  }
- });
-
- totalHTML.innerHTML=`
- 📦 Pedidos: ${qtdMes}<br>
- 💰 Total: R$ ${total}<br>
- ✅ Recebido: R$ ${recebido}<br>
- ⏳ Pendente: R$ ${pendente}
- `;
-}
-
-function limparTudo(){
- if(confirm("Apagar tudo?")){
-  localStorage.clear();
-  pedidos=[];
-  produtos=[];
-  carregar();
-  atualizarProdutos();
- }
 }
 
 </script>
