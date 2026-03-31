@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Caixa Privado - MC Personalizados</title>
+<title>MC Personalizados</title>
 
 <style>
 body {
     font-family: Arial;
-    background: #ffe6f0;
+    background: linear-gradient(135deg,#ffe6f2,#fff0f7);
     margin: 0;
     padding: 20px;
 }
@@ -19,6 +19,7 @@ body {
     background: white;
     border-radius: 20px;
     padding: 20px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.08);
 }
 
 h1 {
@@ -28,15 +29,23 @@ h1 {
 
 input, select, button {
     padding: 10px;
-    margin: 5px;
+    margin: 6px 4px;
     border-radius: 10px;
-    border: 1px solid #ffb6d9;
+    border: 1px solid #ffc4e1;
 }
 
 button {
     background: #ff66b2;
     color: white;
     border: none;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+button:hover {
+    background: #ff4da6;
+    transform: scale(1.05);
 }
 
 table {
@@ -46,13 +55,19 @@ table {
 }
 
 th {
-    background: #ffd6ec;
+    background: #ffe0f0;
     padding: 10px;
 }
 
 td {
     padding: 10px;
     border-bottom: 1px solid #eee;
+}
+
+h2 {
+    background: #fff0f7;
+    padding: 10px;
+    border-radius: 10px;
 }
 </style>
 </head>
@@ -62,26 +77,30 @@ td {
 <div class="container">
 <h1>🌸 Caixa MC Personalizados 🌸</h1>
 
+<h3>Cadastrar produto</h3>
+<input type="text" id="nomeProduto" placeholder="Nome do produto">
+<input type="number" id="precoProduto" placeholder="Preço">
+<button onclick="cadastrarProduto()">Salvar produto</button>
+
+<hr>
+
+<input type="date" id="dataPedido">
 <input type="text" id="cliente" placeholder="Nome do cliente">
+<input type="text" id="vendedor" placeholder="Quem vendeu?">
 
-<select id="produto">
-<option value="35">Caneca personalizada - R$35</option>
-<option value="55">Camisa personalizada - R$55</option>
-<option value="20">Adesivos (10 un) - R$20</option>
-<option value="25">Topo de bolo - R$25</option>
-<option value="15">Chaveiro personalizado - R$15</option>
-</select>
+<br>
 
+<select id="produto"></select>
 <input type="number" id="qtd" value="1">
 
-<select id="pagamento" onchange="verificarPagamento()">
+<select id="pagamento" onchange="calcularRestante()">
 <option value="Pago">Pago</option>
-<option value="Metade">Metade</option>
-<option value="Não pago">Não pago</option>
+<option value="Metade">Pagou parte</option>
+<option value="Não pago">Não pagou</option>
 </select>
 
-<input type="number" id="valorPago" placeholder="Quanto pagou?" style="display:none;">
-<input type="number" id="valorFalta" placeholder="Quanto falta pagar?" style="display:none;">
+<input type="number" id="valorPago" placeholder="Quanto pagou?" oninput="calcularRestante()" style="display:none;">
+<input type="number" id="valorFalta" placeholder="Falta pagar" style="display:none;" readonly>
 
 <select id="forma">
 <option>Pix</option>
@@ -92,41 +111,86 @@ td {
 <br><br>
 
 <button onclick="adicionarPedido()">Adicionar pedido</button>
+<button onclick="limparTudo()" style="background:red;">🧹 Apagar tudo</button>
+
+<br><br>
+
+<input type="date" onchange="filtrarPorData(this.value)">
+<button onclick="carregarPedidos()">Mostrar todos</button>
 
 <table>
 <thead>
 <tr>
+<th>Data</th>
 <th>Cliente</th>
 <th>Produto</th>
 <th>Qtd</th>
 <th>Valor</th>
 <th>Pagamento</th>
-<th>Forma</th>
+<th>Vendedor</th>
+<th>Ações</th>
 </tr>
 </thead>
 
 <tbody id="tabelaPedidos"></tbody>
 </table>
 
-<h2 id="total">Total do dia: R$ 0</h2>
+<h2 id="total"></h2>
 
 </div>
 
 <script>
 
-let total = 0;
+let produtos = JSON.parse(localStorage.getItem("produtosMC")) || [];
 let pedidos = JSON.parse(localStorage.getItem("pedidosMC")) || [];
 
 window.onload = function() {
+    atualizarListaProdutos();
     carregarPedidos();
 };
 
-function verificarPagamento() {
+function cadastrarProduto() {
+    const nome = document.getElementById("nomeProduto").value;
+    const preco = document.getElementById("precoProduto").value;
+
+    if(nome === "" || preco === "") return;
+
+    produtos.push({nome, preco});
+    localStorage.setItem("produtosMC", JSON.stringify(produtos));
+
+    document.getElementById("nomeProduto").value = "";
+    document.getElementById("precoProduto").value = "";
+
+    atualizarListaProdutos();
+}
+
+function atualizarListaProdutos() {
+    const select = document.getElementById("produto");
+    select.innerHTML = "";
+
+    produtos.forEach(p => {
+        const option = document.createElement("option");
+        option.value = p.preco;
+        option.text = `${p.nome} - R$ ${p.preco}`;
+        select.appendChild(option);
+    });
+}
+
+function calcularRestante() {
     const pagamento = document.getElementById("pagamento").value;
+    const produto = document.getElementById("produto");
+    const preco = parseFloat(produto.value || 0);
+    const qtd = parseInt(document.getElementById("qtd").value || 1);
+    const totalPedido = preco * qtd;
 
     if (pagamento === "Metade") {
         document.getElementById("valorPago").style.display = "inline";
         document.getElementById("valorFalta").style.display = "inline";
+
+        const pago = parseFloat(document.getElementById("valorPago").value) || 0;
+        const falta = totalPedido - pago;
+        document.getElementById("valorFalta").value = falta;
+
     } else {
         document.getElementById("valorPago").style.display = "none";
         document.getElementById("valorFalta").style.display = "none";
@@ -134,63 +198,136 @@ function verificarPagamento() {
 }
 
 function adicionarPedido() {
-
+    const data = document.getElementById("dataPedido").value;
     const cliente = document.getElementById("cliente").value;
-    const produto = document.getElementById("produto");
-    const nomeProduto = produto.options[produto.selectedIndex].text;
-    const preco = parseFloat(produto.value);
-    const qtd = parseInt(document.getElementById("qtd").value);
+    const vendedor = document.getElementById("vendedor").value;
+
+    const produtoSelect = document.getElementById("produto");
+    const produtoNome = produtoSelect.options[produtoSelect.selectedIndex]?.text || "";
+    const preco = parseFloat(produtoSelect.value || 0);
+
+    const qtd = parseInt(document.getElementById("qtd").value || 1);
     const pagamento = document.getElementById("pagamento").value;
-    const forma = document.getElementById("forma").value;
 
-    const valor = preco * qtd;
+    const valorTotal = preco * qtd;
 
-    let infoPagamento = pagamento;
-
-    if (pagamento === "Metade") {
-        const valorPago = document.getElementById("valorPago").value;
-        const valorFalta = document.getElementById("valorFalta").value;
-        infoPagamento = `Pagou R$ ${valorPago} | Falta R$ ${valorFalta}`;
+    if (!data || !cliente || !produtoNome) {
+        alert("Preencha os campos obrigatórios!");
+        return;
     }
 
-    const novoPedido = {
-        cliente,
-        produto: nomeProduto,
-        qtd,
-        valor,
-        pagamento: infoPagamento,
-        forma
-    };
+    const pedido = { data, cliente, produto: produtoNome, qtd, valor: valorTotal, pagamento, vendedor };
 
-    pedidos.push(novoPedido);
+    pedidos.push(pedido);
+    localStorage.setItem("pedidosMC", JSON.stringify(pedidos));
+
+    carregarPedidos();
+    limparCampos();
+}
+
+function adicionarNaTabela(p, index) {
+    const tabela = document.getElementById("tabelaPedidos");
+    const linha = document.createElement("tr");
+
+    linha.innerHTML = `
+        <td>${p.data}</td>
+        <td>${p.cliente}</td>
+        <td>${p.produto}</td>
+        <td>${p.qtd}</td>
+        <td>R$ ${p.valor.toFixed(2)}</td>
+        <td>${p.pagamento}</td>
+        <td>${p.vendedor}</td>
+        <td>
+            <button onclick="editarPedido(${index})">✏️</button>
+            <button onclick="excluirPedido(${index})">❌</button>
+        </td>
+    `;
+
+    tabela.appendChild(linha);
+}
+
+function carregarPedidos() {
+    const tabela = document.getElementById("tabelaPedidos");
+    tabela.innerHTML = "";
+
+    pedidos.forEach((p, i) => {
+        adicionarNaTabela(p, i);
+    });
+
+    atualizarTotal();
+}
+
+function excluirPedido(index) {
+    if (confirm("Deseja excluir este pedido?")) {
+        pedidos.splice(index, 1);
+        localStorage.setItem("pedidosMC", JSON.stringify(pedidos));
+        carregarPedidos();
+    }
+}
+
+function editarPedido(index) {
+    const p = pedidos[index];
+
+    document.getElementById("dataPedido").value = p.data;
+    document.getElementById("cliente").value = p.cliente;
+    document.getElementById("vendedor").value = p.vendedor;
+    document.getElementById("qtd").value = p.qtd;
+
+    pedidos.splice(index, 1);
     localStorage.setItem("pedidosMC", JSON.stringify(pedidos));
 
     carregarPedidos();
 }
 
-function carregarPedidos() {
-
-    const tabela = document.getElementById("tabelaPedidos");
-    tabela.innerHTML = "";
-    total = 0;
+function atualizarTotal() {
+    let total = 0;
+    let recebido = 0;
+    let pendente = 0;
 
     pedidos.forEach(p => {
-
         total += p.valor;
 
-        const linha = `<tr>
-            <td>${p.cliente}</td>
-            <td>${p.produto}</td>
-            <td>${p.qtd}</td>
-            <td>R$ ${p.valor}</td>
-            <td>${p.pagamento}</td>
-            <td>${p.forma}</td>
-        </tr>`;
-
-        tabela.innerHTML += linha;
+        if (p.pagamento === "Pago") {
+            recebido += p.valor;
+        } else {
+            pendente += p.valor;
+        }
     });
 
-    document.getElementById("total").innerText = "Total do dia: R$ " + total;
+    document.getElementById("total").innerHTML = `
+        💰 Total: R$ ${total.toFixed(2)} <br>
+        ✅ Recebido: R$ ${recebido.toFixed(2)} <br>
+        ⏳ Pendente: R$ ${pendente.toFixed(2)}
+    `;
+}
+
+function filtrarPorData(data) {
+    const tabela = document.getElementById("tabelaPedidos");
+    tabela.innerHTML = "";
+
+    pedidos.forEach((p, i) => {
+        if (p.data === data) {
+            adicionarNaTabela(p, i);
+        }
+    });
+}
+
+function limparCampos() {
+    document.getElementById("cliente").value = "";
+    document.getElementById("vendedor").value = "";
+    document.getElementById("qtd").value = 1;
+    document.getElementById("valorPago").value = "";
+    document.getElementById("valorFalta").value = "";
+}
+
+function limparTudo() {
+    if (confirm("Tem certeza que deseja apagar TODOS os dados?")) {
+        localStorage.clear();
+        pedidos = [];
+        produtos = [];
+        carregarPedidos();
+        atualizarListaProdutos();
+    }
 }
 
 </script>
