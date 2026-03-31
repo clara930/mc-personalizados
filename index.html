@@ -5,21 +5,27 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MC Personalizados</title>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <style>
 body {margin:0;font-family:Arial;background:#fff0f7;}
+
 .topbar {background:#ff66b2;color:white;padding:15px;display:flex;align-items:center;}
 .menu-btn {font-size:25px;margin-right:15px;cursor:pointer;}
 
 .sidebar {
  position:fixed;left:-250px;top:0;width:250px;height:100%;
- background:#ff66b2;color:white;transition:0.3s;padding-top:20px;
+ background:#ff66b2;color:white;transition:0.3s;padding-top:20px;overflow:auto;
 }
 .sidebar a {display:block;padding:15px;color:white;text-decoration:none;}
 .sidebar a:hover {background:#ff4da6;}
 .open {left:0;}
 
 .container {padding:20px;}
-.card {background:white;border-radius:15px;padding:15px;margin-bottom:15px;}
+
+.card {
+ background:white;border-radius:15px;padding:15px;margin-bottom:15px;
+}
 
 .tela {display:none;}
 .tela.ativa {display:block;}
@@ -37,6 +43,8 @@ button {background:#ff66b2;color:white;border:none;}
 table {width:100%;border-collapse:collapse;}
 th {background:#ffe0f0;padding:10px;}
 td {padding:10px;border-bottom:1px solid #eee;}
+
+.devedor {background:#ffd6d6;}
 </style>
 </head>
 
@@ -51,6 +59,22 @@ td {padding:10px;border-bottom:1px solid #eee;}
 <a onclick="abrirTela('home')">🏠 Início</a>
 <a onclick="abrirTela('produtos')">📦 Produtos</a>
 <a onclick="abrirTela('pedidos')">💰 Pedidos</a>
+<a onclick="abrirTela('grafico')">📊 Gráfico</a>
+
+<hr>
+
+<a onclick="filtrarMes(0)">Janeiro</a>
+<a onclick="filtrarMes(1)">Fevereiro</a>
+<a onclick="filtrarMes(2)">Março</a>
+<a onclick="filtrarMes(3)">Abril</a>
+<a onclick="filtrarMes(4)">Maio</a>
+<a onclick="filtrarMes(5)">Junho</a>
+<a onclick="filtrarMes(6)">Julho</a>
+<a onclick="filtrarMes(7)">Agosto</a>
+<a onclick="filtrarMes(8)">Setembro</a>
+<a onclick="filtrarMes(9)">Outubro</a>
+<a onclick="filtrarMes(10)">Novembro</a>
+<a onclick="filtrarMes(11)">Dezembro</a>
 </div>
 
 <div class="container">
@@ -86,14 +110,21 @@ td {padding:10px;border-bottom:1px solid #eee;}
 <select id="produto"></select>
 <input id="qtd" type="number" value="1">
 
+<input id="descricao" placeholder="Descrição">
+
+<select id="status">
+<option>Em produção</option>
+<option>Pronto</option>
+</select>
+
 <select id="pagamento" onchange="mostrarParcial()">
 <option value="Pago">Pago</option>
-<option value="Metade">Pagou parte</option>
-<option value="Não pago">Não pagou</option>
+<option value="Metade">Metade</option>
+<option value="Não pago">Não pago</option>
 </select>
 
 <input id="valorPago" type="number" placeholder="Quanto pagou" style="display:none;">
-<input id="valorFalta" type="number" placeholder="Falta" readonly style="display:none;">
+<input id="valorFalta" type="number" readonly placeholder="Falta" style="display:none;">
 
 <button onclick="adicionarPedido()">Adicionar</button>
 </div>
@@ -106,6 +137,8 @@ td {padding:10px;border-bottom:1px solid #eee;}
 <th>Data</th>
 <th>Cliente</th>
 <th>Produto</th>
+<th>Desc</th>
+<th>Status</th>
 <th>Total</th>
 <th>Pago</th>
 <th>Falta</th>
@@ -115,6 +148,14 @@ td {padding:10px;border-bottom:1px solid #eee;}
 </table>
 </div>
 
+</div>
+
+<!-- GRÁFICO -->
+<div id="grafico" class="tela">
+<div class="card">
+<h3>Vendas por mês</h3>
+<canvas id="graficoVendas"></canvas>
+</div>
 </div>
 
 </div>
@@ -127,46 +168,35 @@ let pedidos = JSON.parse(localStorage.getItem("pedidos")) || [];
 window.onload = ()=>{
  atualizarProdutos();
  carregar();
+ gerarGrafico();
 };
 
 /* MENU */
 function toggleMenu(){
- let menu = document.getElementById("menu");
  menu.classList.toggle("open");
 }
 
-/* TELAS */
 function abrirTela(t){
- document.querySelectorAll(".tela").forEach(el=>el.classList.remove("ativa"));
+ document.querySelectorAll(".tela").forEach(e=>e.classList.remove("ativa"));
  document.getElementById(t).classList.add("ativa");
-
- document.getElementById("menu").classList.remove("open"); // fecha menu
+ menu.classList.remove("open");
 }
 
 /* PRODUTOS */
 function cadastrarProduto(){
- let nome = nomeProduto.value;
- let preco = precoProduto.value;
- if(!nome || !preco) return;
-
- produtos.push({nome,preco});
+ if(!nomeProduto.value || !precoProduto.value) return;
+ produtos.push({nome:nomeProduto.value,preco:precoProduto.value});
  localStorage.setItem("produtos",JSON.stringify(produtos));
-
- nomeProduto.value="";
- precoProduto.value="";
-
  atualizarProdutos();
 }
 
 function atualizarProdutos(){
- let select = document.getElementById("produto");
- select.innerHTML="";
-
+ produto.innerHTML="";
  produtos.forEach(p=>{
  let op=document.createElement("option");
  op.value=p.preco;
  op.text=p.nome+" - R$ "+p.preco;
- select.appendChild(op);
+ produto.appendChild(op);
  });
 }
 
@@ -181,61 +211,87 @@ function mostrarParcial(){
  }
 }
 
-valorPago.addEventListener("input", calcularFalta);
-qtd.addEventListener("input", calcularFalta);
-produto.addEventListener("change", calcularFalta);
-
-function calcularFalta(){
- let total = produto.value*qtd.value;
- let pago = Number(valorPago.value||0);
- valorFalta.value = total - pago;
-}
+valorPago.addEventListener("input",()=>{
+ let total=produto.value*qtd.value;
+ valorFalta.value=total-(valorPago.value||0);
+});
 
 /* PEDIDOS */
 function adicionarPedido(){
- let total = produto.value*qtd.value;
- let pago = pagamento.value==="Pago"?total:Number(valorPago.value||0);
- let falta = total - pago;
+ let total=produto.value*qtd.value;
+ let pago=pagamento.value==="Pago"?total:Number(valorPago.value||0);
+ let falta=total-pago;
 
- let p = {
+ pedidos.push({
   data:dataPedido.value,
   cliente:cliente.value,
   produto:produto.options[produto.selectedIndex].text,
+  descricao:descricao.value,
+  status:status.value,
   total,pago,falta
- };
+ });
 
- pedidos.push(p);
  localStorage.setItem("pedidos",JSON.stringify(pedidos));
-
  carregar();
+ gerarGrafico();
 }
 
-/* TABELA + RESUMO */
+/* TABELA */
 function carregar(){
- let tabela = document.getElementById("tabela");
  tabela.innerHTML="";
-
- let total=0, recebido=0, pendente=0;
+ let total=0,rec=0,pen=0;
 
  pedidos.forEach(p=>{
  tabela.innerHTML+=`
- <tr>
+ <tr class="${p.falta>0?'devedor':''}">
  <td>${p.data}</td>
  <td>${p.cliente}</td>
  <td>${p.produto}</td>
+ <td>${p.descricao}</td>
+ <td>${p.status}</td>
  <td>${p.total}</td>
  <td>${p.pago}</td>
  <td>${p.falta}</td>
  </tr>`;
 
  total+=p.total;
- recebido+=p.pago;
- pendente+=p.falta;
+ rec+=p.pago;
+ pen+=p.falta;
  });
 
- document.getElementById("total").innerText="💰 "+total;
- document.getElementById("recebido").innerText="✅ "+recebido;
- document.getElementById("pendente").innerText="⏳ "+pendente;
+ totalEl.innerText="💰 "+total;
+ recebido.innerText="✅ "+rec;
+ pendente.innerText="⏳ "+pen;
+}
+
+/* FILTRO */
+function filtrarMes(m){
+ abrirTela('pedidos');
+ tabela.innerHTML="";
+ pedidos.forEach(p=>{
+  let d=new Date(p.data);
+  if(d.getMonth()===m){
+   tabela.innerHTML+=`<tr><td>${p.data}</td><td>${p.cliente}</td><td>${p.produto}</td><td>${p.descricao}</td><td>${p.status}</td><td>${p.total}</td><td>${p.pago}</td><td>${p.falta}</td></tr>`;
+  }
+ });
+}
+
+/* GRÁFICO */
+function gerarGrafico(){
+ let meses=Array(12).fill(0);
+
+ pedidos.forEach(p=>{
+  let d=new Date(p.data);
+  meses[d.getMonth()]+=p.total;
+ });
+
+ new Chart(document.getElementById("graficoVendas"),{
+  type:'bar',
+  data:{
+   labels:["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"],
+   datasets:[{label:'Vendas',data:meses}]
+  }
+ });
 }
 
 </script>
