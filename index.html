@@ -125,6 +125,7 @@ display:none;
 <input id="qtd" type="number" value="1">
 
 <input id="descricao" placeholder="Descrição">
+<input id="desconto" type="number" placeholder="Desconto (R$)" value="0">
 
 <select id="status">
 <option>Em produção</option>
@@ -161,6 +162,7 @@ display:none;
 <th>Vendedor</th>
 <th>Produto</th>
 <th>Descrição</th>
+<th>Desc</th>
 <th>Status</th>
 <th>Forma</th>
 <th>Data Pg</th>
@@ -239,21 +241,19 @@ precoProduto.value=""
 }
 
 function atualizarProdutos(){
-let select=document.getElementById("produto")
-select.innerHTML=""
+produto.innerHTML=""
 produtos.forEach(p=>{
 let op=document.createElement("option")
 op.value=p.preco
 op.text=p.nome+" - R$ "+p.preco
-select.appendChild(op)
+produto.appendChild(op)
 })
 }
 
 function listarProdutos(){
-let lista=document.getElementById("listaProdutos")
-lista.innerHTML=""
+listaProdutos.innerHTML=""
 produtos.forEach((p,i)=>{
-lista.innerHTML+=`<li>${p.nome} - R$ ${p.preco} <button onclick="removerProduto(${i})">❌</button></li>`
+listaProdutos.innerHTML+=`<li>${p.nome} - R$ ${p.preco} <button onclick="removerProduto(${i})">❌</button></li>`
 })
 }
 
@@ -266,7 +266,6 @@ listarProdutos()
 
 /* PAGAMENTO */
 function mostrarParcial(){
-let pagamento=document.getElementById("pagamento")
 if(pagamento.value==="Metade"){
 valorPago.style.display="inline"
 valorFalta.style.display="inline"
@@ -277,16 +276,24 @@ valorFalta.style.display="none"
 }
 
 valorPago.addEventListener("input",()=>{
-let totalCalc=produto.value*qtd.value
+let totalBruto=produto.value*qtd.value
+let descontoValor=Number(desconto.value||0)
+let totalCalc=totalBruto-descontoValor
 valorFalta.value=totalCalc-(valorPago.value||0)
 })
 
 /* PEDIDOS */
 function adicionarPedido(){
-let btn=document.getElementById("btnPedido")
+let btn=btnPedido
 
-let totalCalc=produto.value*qtd.value
+let totalBruto=produto.value*qtd.value
+let descontoValor=Number(desconto.value||0)
+let totalCalc=totalBruto-descontoValor
+if(totalCalc<0) totalCalc=0
+
 let pago=pagamento.value==="Pago"?totalCalc:Number(valorPago.value||0)
+if(pago>totalCalc) pago=totalCalc
+
 let falta=totalCalc-pago
 
 let novo={
@@ -295,6 +302,7 @@ cliente:cliente.value,
 vendedor:vendedor.value,
 produto:produto.options[produto.selectedIndex]?.text||"",
 descricao:descricao.value,
+desconto:descontoValor,
 status:status.value,
 forma:formaPagamento.value,
 dataPg:dataPagamento.value,
@@ -317,11 +325,12 @@ localStorage.setItem("pedidos",JSON.stringify(pedidos))
 carregar()
 gerarGrafico()
 
-// LIMPAR
+// limpar
 dataPedido.value=""
 cliente.value=""
 vendedor.value=""
 descricao.value=""
+desconto.value=0
 qtd.value=1
 status.selectedIndex=0
 formaPagamento.selectedIndex=0
@@ -337,7 +346,7 @@ btn.innerText="Salvar Pedido"
 cliente.focus()
 }
 
-/* RESTO NORMAL */
+/* RESTO */
 function carregar(lista=pedidos){
 tabela.innerHTML=""
 let totalCalc=0,rec=0,pen=0
@@ -350,6 +359,7 @@ tabela.innerHTML+=`
 <td>${p.vendedor}</td>
 <td>${p.produto}</td>
 <td>${p.descricao}</td>
+<td>${p.desconto||0}</td>
 <td>${p.status}</td>
 <td>${p.forma}</td>
 <td>${p.dataPg}</td>
@@ -379,12 +389,13 @@ dataPedido.value=p.data
 cliente.value=p.cliente
 vendedor.value=p.vendedor
 descricao.value=p.descricao
+desconto.value=p.desconto||0
 status.value=p.status
 formaPagamento.value=p.forma
 dataPagamento.value=p.dataPg
 
 editandoIndex=i
-document.getElementById("btnPedido").innerText="Atualizar Pedido"
+btnPedido.innerText="Atualizar Pedido"
 
 abrirTela('pedidos')
 window.scrollTo(0,0)
