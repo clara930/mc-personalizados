@@ -42,7 +42,6 @@ td{padding:10px;border-bottom:1px solid #eee}
 
 .devedor{background:#ffd6f5}
 
-/* alerta */
 .alerta{
 position:fixed;
 bottom:20px;
@@ -239,7 +238,48 @@ nomeProduto.value=""
 precoProduto.value=""
 }
 
-/* resto do código igual... */
+function atualizarProdutos(){
+let select=document.getElementById("produto")
+select.innerHTML=""
+produtos.forEach(p=>{
+let op=document.createElement("option")
+op.value=p.preco
+op.text=p.nome+" - R$ "+p.preco
+select.appendChild(op)
+})
+}
+
+function listarProdutos(){
+let lista=document.getElementById("listaProdutos")
+lista.innerHTML=""
+produtos.forEach((p,i)=>{
+lista.innerHTML+=`<li>${p.nome} - R$ ${p.preco} <button onclick="removerProduto(${i})">❌</button></li>`
+})
+}
+
+function removerProduto(i){
+produtos.splice(i,1)
+localStorage.setItem("produtos",JSON.stringify(produtos))
+atualizarProdutos()
+listarProdutos()
+}
+
+/* PAGAMENTO */
+function mostrarParcial(){
+let pagamento=document.getElementById("pagamento")
+if(pagamento.value==="Metade"){
+valorPago.style.display="inline"
+valorFalta.style.display="inline"
+}else{
+valorPago.style.display="none"
+valorFalta.style.display="none"
+}
+}
+
+valorPago.addEventListener("input",()=>{
+let totalCalc=produto.value*qtd.value
+valorFalta.value=totalCalc-(valorPago.value||0)
+})
 
 /* PEDIDOS */
 function adicionarPedido(){
@@ -253,7 +293,7 @@ let novo={
 data:dataPedido.value,
 cliente:cliente.value,
 vendedor:vendedor.value,
-produto:produto.options[produto.selectedIndex].text,
+produto:produto.options[produto.selectedIndex]?.text||"",
 descricao:descricao.value,
 status:status.value,
 forma:formaPagamento.value,
@@ -277,7 +317,7 @@ localStorage.setItem("pedidos",JSON.stringify(pedidos))
 carregar()
 gerarGrafico()
 
-// LIMPAR TUDO
+// LIMPAR
 dataPedido.value=""
 cliente.value=""
 vendedor.value=""
@@ -297,6 +337,41 @@ btn.innerText="Salvar Pedido"
 cliente.focus()
 }
 
+/* RESTO NORMAL */
+function carregar(lista=pedidos){
+tabela.innerHTML=""
+let totalCalc=0,rec=0,pen=0
+
+lista.forEach((p,i)=>{
+tabela.innerHTML+=`
+<tr class="${p.falta>0?'devedor':''}">
+<td>${p.data}</td>
+<td>${p.cliente}</td>
+<td>${p.vendedor}</td>
+<td>${p.produto}</td>
+<td>${p.descricao}</td>
+<td>${p.status}</td>
+<td>${p.forma}</td>
+<td>${p.dataPg}</td>
+<td>${p.total}</td>
+<td>${p.pago}</td>
+<td>${p.falta}</td>
+<td>
+<button onclick="editarPedido(${i})">✏️</button>
+<button onclick="excluirPedido(${i})">🗑️</button>
+</td>
+</tr>`
+
+totalCalc+=p.total
+rec+=p.pago
+pen+=p.falta
+})
+
+total.innerText="💰 "+totalCalc
+recebido.innerText="✅ "+rec
+pendente.innerText="⏳ "+pen
+}
+
 function editarPedido(i){
 let p=pedidos[i]
 
@@ -309,7 +384,6 @@ formaPagamento.value=p.forma
 dataPagamento.value=p.dataPg
 
 editandoIndex=i
-
 document.getElementById("btnPedido").innerText="Atualizar Pedido"
 
 abrirTela('pedidos')
@@ -322,11 +396,45 @@ pedidos.splice(i,1)
 localStorage.setItem("pedidos",JSON.stringify(pedidos))
 carregar()
 gerarGrafico()
-mostrarAlerta("Pedido excluído")
 }
 }
 
-/* resto permanece igual */
+function buscarPedidos(){
+let termo=busca.value.toLowerCase()
+let filtrados=pedidos.filter(p=>
+(p.cliente||"").toLowerCase().includes(termo)||
+(p.vendedor||"").toLowerCase().includes(termo)||
+(p.produto||"").toLowerCase().includes(termo)||
+(p.descricao||"").toLowerCase().includes(termo)
+)
+carregar(filtrados)
+}
+
+function filtrarMes(m){
+abrirTela('pedidos')
+let filtrados=pedidos.filter(p=>{
+let d=new Date(p.data)
+return d.getMonth()===m
+})
+carregar(filtrados)
+}
+
+function gerarGrafico(){
+let meses=Array(12).fill(0)
+
+pedidos.forEach(p=>{
+let d=new Date(p.data)
+meses[d.getMonth()]+=p.total
+})
+
+new Chart(document.getElementById("graficoVendas"),{
+type:'bar',
+data:{
+labels:["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"],
+datasets:[{label:'Vendas',data:meses}]
+}
+})
+}
 
 </script>
 
