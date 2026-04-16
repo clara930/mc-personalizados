@@ -39,11 +39,9 @@ table{width:100%;border-collapse:collapse}
 th{background:#e6d6ff;padding:10px}
 td{padding:10px;border-bottom:1px solid #eee}
 
-/* CORES */
 .pago{background:#d4edda}
 .metade{background:#fff3cd}
 .naopago{background:#f8d7da}
-
 </style>
 </head>
 
@@ -86,6 +84,18 @@ td{padding:10px;border-bottom:1px solid #eee}
 </div>
 </div>
 
+<div id="produtos" class="tela">
+<div class="card">
+<h3>Cadastrar Produto</h3>
+<input id="nomeProduto" placeholder="Nome">
+<input id="precoProduto" type="number" placeholder="Preço">
+<button onclick="cadastrarProduto()">Salvar</button>
+
+<h4>Produtos:</h4>
+<ul id="listaProdutos"></ul>
+</div>
+</div>
+
 <div id="pedidos" class="tela">
 
 <div class="card">
@@ -112,6 +122,14 @@ td{padding:10px;border-bottom:1px solid #eee}
 <option>Entregue</option>
 </select>
 
+<select id="formaPagamento">
+<option>Pix</option>
+<option>Dinheiro</option>
+<option>Cartão</option>
+</select>
+
+<input type="date" id="dataPagamento">
+
 <select id="pagamento" onchange="mostrarParcial()">
 <option value="Pago">Pago</option>
 <option value="Metade">Metade</option>
@@ -132,6 +150,8 @@ td{padding:10px;border-bottom:1px solid #eee}
 <th>Vendedor</th>
 <th>Produto</th>
 <th>Status</th>
+<th>Forma</th>
+<th>Data Pg</th>
 <th>Total</th>
 <th>Pago</th>
 <th>Ações</th>
@@ -160,16 +180,59 @@ let grafico=null
 
 window.onload=()=>{
 atualizarProdutos()
+listarProdutos()
 carregar()
 gerarGrafico()
 }
 
-/* MENU */
 function toggleMenu(){menu.classList.toggle("open")}
 function abrirTela(t){
 document.querySelectorAll(".tela").forEach(e=>e.classList.remove("ativa"))
 document.getElementById(t).classList.add("ativa")
 menu.classList.remove("open")
+}
+
+/* PRODUTOS */
+function cadastrarProduto(){
+let nome=nomeProduto.value.trim()
+let preco=precoProduto.value
+if(!nome||!preco)return
+
+produtos.push({nome,preco})
+localStorage.setItem("produtos",JSON.stringify(produtos))
+
+atualizarProdutos()
+listarProdutos()
+
+nomeProduto.value=""
+precoProduto.value=""
+}
+
+function atualizarProdutos(){
+produto.innerHTML=""
+produtos.forEach(p=>{
+let op=document.createElement("option")
+op.value=p.preco
+op.text=p.nome+" - R$ "+p.preco
+produto.appendChild(op)
+})
+}
+
+function listarProdutos(){
+listaProdutos.innerHTML=""
+produtos.forEach((p,i)=>{
+listaProdutos.innerHTML+=`
+<li>${p.nome} - R$ ${p.preco}
+<button onclick="removerProduto(${i})">❌</button>
+</li>`
+})
+}
+
+function removerProduto(i){
+produtos.splice(i,1)
+localStorage.setItem("produtos",JSON.stringify(produtos))
+atualizarProdutos()
+listarProdutos()
 }
 
 /* PAGAMENTO */
@@ -192,6 +255,8 @@ cliente:cliente.value,
 vendedor:vendedor.value,
 produto:produto.options[produto.selectedIndex]?.text||"",
 status:document.getElementById("status").value,
+forma:formaPagamento.value,
+dataPg:dataPagamento.value,
 total,
 pago
 }
@@ -226,6 +291,8 @@ tabela.innerHTML+=`
 <td>${p.vendedor}</td>
 <td>${p.produto}</td>
 <td>${p.status||"Em produção"}</td>
+<td>${p.forma||""}</td>
+<td>${p.dataPg||""}</td>
 <td>${p.total}</td>
 <td>${p.pago}</td>
 <td>
@@ -251,9 +318,9 @@ let p=pedidos[i]
 dataPedido.value=p.data
 cliente.value=p.cliente
 vendedor.value=p.vendedor
-descricao.value=p.descricao||""
-desconto.value=p.desconto||0
 document.getElementById("status").value=p.status||"Em produção"
+formaPagamento.value=p.forma||"Pix"
+dataPagamento.value=p.dataPg||""
 
 editandoIndex=i
 btnPedido.innerText="Atualizar"
