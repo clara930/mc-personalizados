@@ -21,7 +21,6 @@ background:#a259ff;color:white;transition:0.3s;padding-top:20px;overflow:auto
 .open{left:0}
 
 .container{padding:20px}
-
 .card{background:white;border-radius:15px;padding:15px;margin-bottom:15px}
 
 .tela{display:none}
@@ -40,22 +39,11 @@ table{width:100%;border-collapse:collapse}
 th{background:#e6d6ff;padding:10px}
 td{padding:10px;border-bottom:1px solid #eee}
 
-/* CORES PAGAMENTO */
+/* CORES */
 .pago{background:#d4edda}
 .metade{background:#fff3cd}
 .naopago{background:#f8d7da}
 
-.alerta{
-position:fixed;
-bottom:20px;
-left:50%;
-transform:translateX(-50%);
-background:#a259ff;
-color:white;
-padding:10px 20px;
-border-radius:10px;
-display:none;
-}
 </style>
 </head>
 
@@ -98,18 +86,6 @@ display:none;
 </div>
 </div>
 
-<div id="produtos" class="tela">
-<div class="card">
-<h3>Cadastrar Produto</h3>
-<input id="nomeProduto" placeholder="Nome">
-<input id="precoProduto" type="number" placeholder="Preço">
-<button onclick="cadastrarProduto()">Salvar</button>
-
-<h4>Produtos:</h4>
-<ul id="listaProdutos"></ul>
-</div>
-</div>
-
 <div id="pedidos" class="tela">
 
 <div class="card">
@@ -144,7 +120,7 @@ display:none;
 
 <input id="valorPago" type="number" placeholder="Valor pago" style="display:none;">
 
-<button onclick="adicionarPedido()">Salvar</button>
+<button id="btnPedido" onclick="adicionarPedido()">Salvar</button>
 </div>
 
 <div class="card">
@@ -158,6 +134,7 @@ display:none;
 <th>Status</th>
 <th>Total</th>
 <th>Pago</th>
+<th>Ações</th>
 </tr>
 </thead>
 <tbody id="tabela"></tbody>
@@ -174,17 +151,15 @@ display:none;
 
 </div>
 
-<div id="alerta" class="alerta"></div>
-
 <script>
 
 let produtos=JSON.parse(localStorage.getItem("produtos"))||[]
 let pedidos=JSON.parse(localStorage.getItem("pedidos"))||[]
+let editandoIndex=null
 let grafico=null
 
 window.onload=()=>{
 atualizarProdutos()
-listarProdutos()
 carregar()
 gerarGrafico()
 }
@@ -195,35 +170,6 @@ function abrirTela(t){
 document.querySelectorAll(".tela").forEach(e=>e.classList.remove("ativa"))
 document.getElementById(t).classList.add("ativa")
 menu.classList.remove("open")
-}
-
-/* PRODUTOS */
-function cadastrarProduto(){
-let nome=nomeProduto.value
-let preco=precoProduto.value
-if(!nome||!preco)return
-
-produtos.push({nome,preco})
-localStorage.setItem("produtos",JSON.stringify(produtos))
-atualizarProdutos()
-listarProdutos()
-}
-
-function atualizarProdutos(){
-produto.innerHTML=""
-produtos.forEach(p=>{
-let op=document.createElement("option")
-op.value=p.preco
-op.text=p.nome+" - R$ "+p.preco
-produto.appendChild(op)
-})
-}
-
-function listarProdutos(){
-listaProdutos.innerHTML=""
-produtos.forEach((p,i)=>{
-listaProdutos.innerHTML+=`<li>${p.nome} - R$ ${p.preco}</li>`
-})
 }
 
 /* PAGAMENTO */
@@ -250,9 +196,15 @@ total,
 pago
 }
 
+if(editandoIndex!==null){
+pedidos[editandoIndex]=novo
+editandoIndex=null
+btnPedido.innerText="Salvar"
+}else{
 pedidos.push(novo)
-localStorage.setItem("pedidos",JSON.stringify(pedidos))
+}
 
+localStorage.setItem("pedidos",JSON.stringify(pedidos))
 carregar()
 gerarGrafico()
 }
@@ -262,7 +214,7 @@ function carregar(lista=pedidos){
 tabela.innerHTML=""
 let totalG=0, rec=0, pen=0
 
-lista.forEach(p=>{
+lista.forEach((p,i)=>{
 let classe="naopago"
 if(p.pago>=p.total) classe="pago"
 else if(p.pago>0) classe="metade"
@@ -276,6 +228,10 @@ tabela.innerHTML+=`
 <td>${p.status||"Em produção"}</td>
 <td>${p.total}</td>
 <td>${p.pago}</td>
+<td>
+<button onclick="editarPedido(${i})">✏️</button>
+<button onclick="excluirPedido(${i})">🗑️</button>
+</td>
 </tr>`
 
 totalG+=p.total
@@ -286,6 +242,32 @@ pen+=(p.total-p.pago)
 total.innerText="💰 "+totalG
 recebido.innerText="✅ "+rec
 pendente.innerText="⏳ "+pen
+}
+
+/* EDITAR */
+function editarPedido(i){
+let p=pedidos[i]
+
+dataPedido.value=p.data
+cliente.value=p.cliente
+vendedor.value=p.vendedor
+descricao.value=p.descricao||""
+desconto.value=p.desconto||0
+document.getElementById("status").value=p.status||"Em produção"
+
+editandoIndex=i
+btnPedido.innerText="Atualizar"
+abrirTela('pedidos')
+}
+
+/* EXCLUIR */
+function excluirPedido(i){
+if(confirm("Excluir pedido?")){
+pedidos.splice(i,1)
+localStorage.setItem("pedidos",JSON.stringify(pedidos))
+carregar()
+gerarGrafico()
+}
 }
 
 /* BUSCA */
