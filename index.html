@@ -20,28 +20,37 @@ background:#a259ff;color:white;transition:0.3s;padding-top:20px;overflow:auto
 .sidebar a:hover{background:#8b3dff}
 .open{left:0}
 
-.container{padding:20px}
+.container{padding:15px}
+
 .card{background:white;border-radius:15px;padding:15px;margin-bottom:15px}
 
 .tela{display:none}
 .tela.ativa{display:block}
 
 input,select,button{
-padding:10px;margin:5px;border-radius:10px;border:1px solid #d6b8ff
+padding:12px;margin:5px;border-radius:10px;border:1px solid #d6b8ff;
+font-size:14px
 }
 
 button{background:#a259ff;color:white;border:none;cursor:pointer}
 
-.resumo{display:flex;gap:10px}
+.resumo{display:flex;gap:10px;flex-wrap:wrap}
 .resumo div{flex:1;background:#e6d6ff;padding:10px;border-radius:10px;text-align:center}
 
-table{width:100%;border-collapse:collapse}
-th{background:#e6d6ff;padding:10px}
-td{padding:10px;border-bottom:1px solid #eee}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:#e6d6ff;padding:8px}
+td{padding:8px;border-bottom:1px solid #eee}
 
+/* cores */
 .pago{background:#d4edda}
 .metade{background:#fff3cd}
 .naopago{background:#f8d7da}
+
+/* mobile */
+@media(max-width:600px){
+table,thead,tbody,tr,td,th{font-size:11px}
+button{padding:8px}
+}
 </style>
 </head>
 
@@ -100,6 +109,8 @@ td{padding:10px;border-bottom:1px solid #eee}
 
 <div class="card">
 <button onclick="imprimirTela()">🖨️ Imprimir</button>
+<button onclick="exportarDados()">⬇️ Exportar</button>
+<input type="file" onchange="importarDados(event)">
 <input id="busca" placeholder="Buscar..." oninput="buscarPedidos()">
 </div>
 
@@ -185,6 +196,7 @@ carregar()
 gerarGrafico()
 }
 
+/* MENU */
 function toggleMenu(){menu.classList.toggle("open")}
 function abrirTela(t){
 document.querySelectorAll(".tela").forEach(e=>e.classList.remove("ativa"))
@@ -200,7 +212,6 @@ if(!nome||!preco)return
 
 produtos.push({nome,preco})
 localStorage.setItem("produtos",JSON.stringify(produtos))
-
 atualizarProdutos()
 listarProdutos()
 
@@ -298,6 +309,7 @@ tabela.innerHTML+=`
 <td>
 <button onclick="editarPedido(${i})">✏️</button>
 <button onclick="excluirPedido(${i})">🗑️</button>
+<button onclick="gerarRecibo(${i})">🧾</button>
 </td>
 </tr>`
 
@@ -311,42 +323,49 @@ recebido.innerText="✅ "+rec
 pendente.innerText="⏳ "+pen
 }
 
-/* EDITAR */
+/* RECIBO */
+function gerarRecibo(i){
+let p=pedidos[i]
+let w=window.open()
+w.document.write(`
+<h2>Recibo</h2>
+<p>Cliente: ${p.cliente}</p>
+<p>Produto: ${p.produto}</p>
+<p>Total: R$ ${p.total}</p>
+<p>Pago: R$ ${p.pago}</p>
+<p>Obrigado ❤️</p>
+`)
+w.print()
+}
+
+/* RESTO */
 function editarPedido(i){
 let p=pedidos[i]
-
 dataPedido.value=p.data
 cliente.value=p.cliente
 vendedor.value=p.vendedor
-document.getElementById("status").value=p.status||"Em produção"
-formaPagamento.value=p.forma||"Pix"
-dataPagamento.value=p.dataPg||""
-
+status.value=p.status
+formaPagamento.value=p.forma
+dataPagamento.value=p.dataPg
 editandoIndex=i
 btnPedido.innerText="Atualizar"
-abrirTela('pedidos')
 }
 
-/* EXCLUIR */
 function excluirPedido(i){
-if(confirm("Excluir pedido?")){
+if(confirm("Excluir?")){
 pedidos.splice(i,1)
 localStorage.setItem("pedidos",JSON.stringify(pedidos))
 carregar()
-gerarGrafico()
 }
 }
 
-/* BUSCA */
 function buscarPedidos(){
 let t=busca.value.toLowerCase()
 carregar(pedidos.filter(p=>
-(p.cliente||"").toLowerCase().includes(t)||
-(p.vendedor||"").toLowerCase().includes(t)
+(p.cliente||"").toLowerCase().includes(t)
 ))
 }
 
-/* FILTRO */
 function filtrarMes(m){
 abrirTela('pedidos')
 carregar(pedidos.filter(p=>{
@@ -355,7 +374,6 @@ return new Date(p.data).getMonth()===m
 }))
 }
 
-/* GRÁFICO */
 function gerarGrafico(){
 let meses=Array(12).fill(0)
 pedidos.forEach(p=>{
@@ -372,12 +390,32 @@ datasets:[{label:'Vendas',data:meses}]}
 })
 }
 
-/* IMPRIMIR */
 function imprimirTela(){
 let conteudo=document.getElementById("tabela").innerHTML
 let w=window.open()
-w.document.write(`<table border="1" style="width:100%;border-collapse:collapse">${conteudo}</table>`)
+w.document.write(`<table border="1">${conteudo}</table>`)
 w.print()
+}
+
+function exportarDados(){
+let blob=new Blob([JSON.stringify({produtos,pedidos})])
+let a=document.createElement("a")
+a.href=URL.createObjectURL(blob)
+a.download="backup.json"
+a.click()
+}
+
+function importarDados(e){
+let reader=new FileReader()
+reader.onload=()=>{
+let dados=JSON.parse(reader.result)
+produtos=dados.produtos||[]
+pedidos=dados.pedidos||[]
+localStorage.setItem("produtos",JSON.stringify(produtos))
+localStorage.setItem("pedidos",JSON.stringify(pedidos))
+location.reload()
+}
+reader.readAsText(e.target.files[0])
 }
 
 </script>
