@@ -98,10 +98,23 @@ display:none;
 </div>
 </div>
 
+<div id="produtos" class="tela">
+<div class="card">
+<h3>Cadastrar Produto</h3>
+<input id="nomeProduto" placeholder="Nome">
+<input id="precoProduto" type="number" placeholder="Preço">
+<button onclick="cadastrarProduto()">Salvar</button>
+
+<h4>Produtos:</h4>
+<ul id="listaProdutos"></ul>
+</div>
+</div>
+
 <div id="pedidos" class="tela">
 
 <div class="card">
 <button onclick="imprimirTela()">🖨️ Imprimir</button>
+<input id="busca" placeholder="Buscar..." oninput="buscarPedidos()">
 </div>
 
 <div class="card">
@@ -109,7 +122,7 @@ display:none;
 
 <input type="date" id="dataPedido">
 <input id="cliente" placeholder="Cliente">
-<input id="vendedor" placeholder="Quem vendeu">
+<input id="vendedor" placeholder="Vendedor">
 
 <select id="produto"></select>
 <input id="qtd" type="number" value="1">
@@ -129,7 +142,7 @@ display:none;
 <option value="Não pago">Não pago</option>
 </select>
 
-<input id="valorPago" type="number" placeholder="Quanto pagou" style="display:none;">
+<input id="valorPago" type="number" placeholder="Valor pago" style="display:none;">
 
 <button onclick="adicionarPedido()">Salvar</button>
 </div>
@@ -140,6 +153,8 @@ display:none;
 <tr>
 <th>Data</th>
 <th>Cliente</th>
+<th>Vendedor</th>
+<th>Produto</th>
 <th>Status</th>
 <th>Total</th>
 <th>Pago</th>
@@ -151,41 +166,103 @@ display:none;
 
 </div>
 
+<div id="grafico" class="tela">
+<div class="card">
+<canvas id="graficoVendas"></canvas>
 </div>
+</div>
+
+</div>
+
+<div id="alerta" class="alerta"></div>
 
 <script>
 
-let pedidos=[]
+let produtos=JSON.parse(localStorage.getItem("produtos"))||[]
+let pedidos=JSON.parse(localStorage.getItem("pedidos"))||[]
+let grafico=null
 
+window.onload=()=>{
+atualizarProdutos()
+listarProdutos()
+carregar()
+gerarGrafico()
+}
+
+/* MENU */
+function toggleMenu(){menu.classList.toggle("open")}
+function abrirTela(t){
+document.querySelectorAll(".tela").forEach(e=>e.classList.remove("ativa"))
+document.getElementById(t).classList.add("ativa")
+menu.classList.remove("open")
+}
+
+/* PRODUTOS */
+function cadastrarProduto(){
+let nome=nomeProduto.value
+let preco=precoProduto.value
+if(!nome||!preco)return
+
+produtos.push({nome,preco})
+localStorage.setItem("produtos",JSON.stringify(produtos))
+atualizarProdutos()
+listarProdutos()
+}
+
+function atualizarProdutos(){
+produto.innerHTML=""
+produtos.forEach(p=>{
+let op=document.createElement("option")
+op.value=p.preco
+op.text=p.nome+" - R$ "+p.preco
+produto.appendChild(op)
+})
+}
+
+function listarProdutos(){
+listaProdutos.innerHTML=""
+produtos.forEach((p,i)=>{
+listaProdutos.innerHTML+=`<li>${p.nome} - R$ ${p.preco}</li>`
+})
+}
+
+/* PAGAMENTO */
 function mostrarParcial(){
 valorPago.style.display = pagamento.value==="Metade" ? "inline" : "none"
 }
 
+/* PEDIDOS */
 function adicionarPedido(){
 
-let total=100 // exemplo simples
+let total=(Number(produto.value)||0)*(Number(qtd.value)||1)
+total-=Number(desconto.value||0)
+if(total<0) total=0
 
 let pago = pagamento.value==="Pago" ? total : Number(valorPago.value||0)
-let falta = total - pago
 
 let novo={
 data:dataPedido.value,
 cliente:cliente.value,
+vendedor:vendedor.value,
+produto:produto.options[produto.selectedIndex]?.text||"",
 status:document.getElementById("status").value,
 total,
-pago,
-falta
+pago
 }
 
 pedidos.push(novo)
+localStorage.setItem("pedidos",JSON.stringify(pedidos))
+
 carregar()
+gerarGrafico()
 }
 
-function carregar(){
+/* LISTA */
+function carregar(lista=pedidos){
 tabela.innerHTML=""
+let totalG=0, rec=0, pen=0
 
-pedidos.forEach(p=>{
-
+lista.forEach(p=>{
 let classe="naopago"
 if(p.pago>=p.total) classe="pago"
 else if(p.pago>0) classe="metade"
@@ -194,24 +271,63 @@ tabela.innerHTML+=`
 <tr class="${classe}">
 <td>${p.data}</td>
 <td>${p.cliente}</td>
-<td>${p.status}</td>
+<td>${p.vendedor}</td>
+<td>${p.produto}</td>
+<td>${p.status||"Em produção"}</td>
 <td>${p.total}</td>
 <td>${p.pago}</td>
 </tr>`
+
+totalG+=p.total
+rec+=p.pago
+pen+=(p.total-p.pago)
+})
+
+total.innerText="💰 "+totalG
+recebido.innerText="✅ "+rec
+pendente.innerText="⏳ "+pen
+}
+
+/* BUSCA */
+function buscarPedidos(){
+let t=busca.value.toLowerCase()
+carregar(pedidos.filter(p=>
+(p.cliente||"").toLowerCase().includes(t)||
+(p.vendedor||"").toLowerCase().includes(t)
+))
+}
+
+/* FILTRO */
+function filtrarMes(m){
+abrirTela('pedidos')
+carregar(pedidos.filter(p=>{
+if(!p.data)return false
+return new Date(p.data).getMonth()===m
+}))
+}
+
+/* GRÁFICO */
+function gerarGrafico(){
+let meses=Array(12).fill(0)
+pedidos.forEach(p=>{
+if(!p.data)return
+meses[new Date(p.data).getMonth()]+=p.total
+})
+
+if(grafico)grafico.destroy()
+
+grafico=new Chart(document.getElementById("graficoVendas"),{
+type:'bar',
+data:{labels:["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"],
+datasets:[{label:'Vendas',data:meses}]}
 })
 }
 
+/* IMPRIMIR */
 function imprimirTela(){
 let conteudo=document.getElementById("tabela").innerHTML
-
 let w=window.open()
-
-w.document.write(`
-<table border="1" style="width:100%;border-collapse:collapse">
-${conteudo}
-</table>
-`)
-
+w.document.write(`<table border="1" style="width:100%;border-collapse:collapse">${conteudo}</table>`)
 w.print()
 }
 
